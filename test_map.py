@@ -82,6 +82,9 @@ loss, accuracy = model.evaluate(X_val, y_val)
 print(f'Validation Loss: {loss}')
 print(f'Validation Accuracy: {accuracy}')
 
+# Save the model to HDF5 file
+model.save('model.h5')
+
 # Example of predicting winrate for a new minimap
 new_minimap = preprocess_image('images/004.png', mask_path)
 new_minimap = np.expand_dims(new_minimap, axis=0)  # Add batch dimension
