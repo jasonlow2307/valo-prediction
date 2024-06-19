@@ -17,7 +17,7 @@ def preprocess_image(image_path, mask_path):
     mask_resized = cv2.resize(mask, (image.shape[1], image.shape[0]))  # Resize mask to fit image size
     minimap = cv2.bitwise_and(image, image, mask=mask_resized)
     rows, cols, _ = minimap.shape
-    minimap = minimap[0:rows//2, 0:cols//2]
+    minimap = minimap[0:int(rows//2.3), 0:int(cols//4)]
     minimap_gray = cv2.cvtColor(minimap, cv2.COLOR_BGR2GRAY)
     minimap_resized = cv2.resize(minimap_gray, (64, 64))  # Resize to 64x64
     minimap_normalized = minimap_resized / 255.0  # Normalize pixel values
