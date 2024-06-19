@@ -7,6 +7,9 @@ import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
 import pandas as pd
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import Dropout
 
 # Function to preprocess images
 def preprocess_image(image_path, mask_path):
@@ -43,28 +46,36 @@ X_train, X_val, y_train, y_val = train_test_split(images, winrates, test_size=0.
 y_train = np.array(y_train)
 y_val = np.array(y_val)
 
-# Build CNN model with increased convolutional layers
+
 model = Sequential([
-    Conv2D(32, (3, 3), activation='relu', input_shape=(64, 64, 1)),
+    Conv2D(32, (3, 3), activation='relu', kernel_regularizer=l2(0.001), input_shape=(64, 64, 1)),
     MaxPooling2D((2, 2)),
-    Conv2D(64, (3, 3), activation='relu'),
+    Dropout(0.25),
+    Conv2D(64, (3, 3), activation='relu', kernel_regularizer=l2(0.001)),
     MaxPooling2D((2, 2)),
-    Conv2D(128, (3, 3), activation='relu'),  # Additional convolutional layer
+    Dropout(0.25),
+    Conv2D(128, (3, 3), activation='relu', kernel_regularizer=l2(0.001)),
     MaxPooling2D((2, 2)),
-    Conv2D(256, (3, 3), activation='relu'),  # Additional convolutional layer
+    Dropout(0.25),
+    Conv2D(256, (3, 3), activation='relu', kernel_regularizer=l2(0.001)),
     MaxPooling2D((2, 2)),
+    Dropout(0.25),
     Flatten(),
-    Dense(128, activation='relu'),
+    Dense(128, activation='relu', kernel_regularizer=l2(0.001)),
+    Dropout(0.5),
     Dense(1, activation='sigmoid')
 ])
+
 
 # Compile the model
 model.compile(optimizer='adam',
               loss='binary_crossentropy',  # Use binary crossentropy for binary classification
               metrics=['accuracy'])  # Optional: Add metrics like accuracy for evaluation
 
+early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+
 # Train the model
-history = model.fit(X_train, y_train, epochs=20, validation_data=(X_val, y_val), batch_size=32)
+history = model.fit(X_train, y_train, epochs=100, validation_data=(X_val, y_val), callbacks=[early_stop])
 
 # Evaluate the model
 loss, accuracy = model.evaluate(X_val, y_val)
