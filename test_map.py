@@ -48,23 +48,17 @@ y_val = np.array(y_val)
 
 
 model = Sequential([
-    Conv2D(32, (3, 3), activation='relu', kernel_regularizer=l2(0.001), input_shape=(64, 64, 1)),
+    Conv2D(32, (3, 3), activation='relu', input_shape=(64, 64, 1)),
     MaxPooling2D((2, 2)),
-    Dropout(0.25),
-    Conv2D(64, (3, 3), activation='relu', kernel_regularizer=l2(0.001)),
+    Conv2D(64, (3, 3), activation='relu'),
     MaxPooling2D((2, 2)),
-    Dropout(0.25),
-    Conv2D(128, (3, 3), activation='relu', kernel_regularizer=l2(0.001)),
+    Conv2D(128, (3, 3), activation='relu'),
     MaxPooling2D((2, 2)),
-    Dropout(0.25),
-    Conv2D(256, (3, 3), activation='relu', kernel_regularizer=l2(0.001)),
-    MaxPooling2D((2, 2)),
-    Dropout(0.25),
     Flatten(),
-    Dense(128, activation='relu', kernel_regularizer=l2(0.001)),
-    Dropout(0.5),
+    Dense(128, activation='relu'),
     Dense(1, activation='sigmoid')
 ])
+
 
 
 # Compile the model
