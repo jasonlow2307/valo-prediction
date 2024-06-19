@@ -111,8 +111,8 @@ while True:
         screenshot = pyautogui.screenshot(region=(selected_window.left, selected_window.top, selected_window.width, selected_window.height))
         frame = np.array(screenshot)
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        filename = os.path.join(output_dir, f'{timestamp}.png')
-        # minimap = extract_minimap(frame, mask)
-        cv2.imwrite(filename, frame)
+        filename = os.path.join(output_dir, f'{timestamp}.jpg')  # Change file extension to .jpg
+        # Save as JPEG with compression quality set to 95 (adjust as needed)
+        cv2.imwrite(filename, frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
         round_screenshots.append((timestamp, filename))
         time.sleep(screenshot_interval)
