@@ -43,15 +43,19 @@ X_train, X_val, y_train, y_val = train_test_split(images, winrates, test_size=0.
 y_train = np.array(y_train)
 y_val = np.array(y_val)
 
-# Build CNN model for binary classification
+# Build CNN model with increased convolutional layers
 model = Sequential([
     Conv2D(32, (3, 3), activation='relu', input_shape=(64, 64, 1)),
     MaxPooling2D((2, 2)),
     Conv2D(64, (3, 3), activation='relu'),
     MaxPooling2D((2, 2)),
+    Conv2D(128, (3, 3), activation='relu'),  # Additional convolutional layer
+    MaxPooling2D((2, 2)),
+    Conv2D(256, (3, 3), activation='relu'),  # Additional convolutional layer
+    MaxPooling2D((2, 2)),
     Flatten(),
     Dense(128, activation='relu'),
-    Dense(1, activation='sigmoid')  # Change activation to sigmoid for binary classification
+    Dense(1, activation='sigmoid')
 ])
 
 # Compile the model
