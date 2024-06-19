@@ -19,8 +19,8 @@ def preprocess_image(image_path, mask_path):
     minimap = cv2.bitwise_and(image, image, mask=mask_resized)
     rows, cols, _ = minimap.shape
     minimap = minimap[0:int(rows//2.3), 0:int(cols//4)]
-    minimap_gray = cv2.cvtColor(minimap, cv2.COLOR_BGR2GRAY)
-    minimap_resized = cv2.resize(minimap_gray, (64, 64))  # Resize to 64x64
+    #minimap_gray = cv2.cvtColor(minimap, cv2.COLOR_BGR2GRAY)
+    minimap_resized = cv2.resize(minimap, (64, 64))  # Resize to 64x64
     minimap_normalized = minimap_resized / 255.0  # Normalize pixel values
     return minimap_normalized
 
@@ -49,7 +49,7 @@ y_train = np.array(y_train)
 y_val = np.array(y_val)
 
 model = Sequential([
-    Conv2D(32, (3, 3), activation='relu', input_shape=(64, 64, 1)),
+    Conv2D(32, (3, 3), activation='relu', input_shape=(64, 64, 3)),
     MaxPooling2D((2, 2)),
     
     Conv2D(64, (3, 3), activation='relu'),
