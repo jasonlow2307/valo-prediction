@@ -23,8 +23,8 @@ def capture_and_preprocess(selected_window):
     minimap = cv2.bitwise_and(frame, frame, mask=mask_resized)
     rows, cols, _ = minimap.shape
     minimap = minimap[0:int(rows//2.3), 0:int(cols//4)]
-    #minimap_gray = cv2.cvtColor(minimap, cv2.COLOR_BGR2GRAY)
-    minimap_resized = cv2.resize(minimap, (64, 64))  # Resize to 64x64
+    minimap_gray = cv2.cvtColor(minimap, cv2.COLOR_BGR2GRAY)
+    minimap_resized = cv2.resize(minimap_gray, (64, 64))  # Resize to 64x64
     minimap_normalized = minimap_resized / 255.0  # Normalize pixel values
     
     # Display processed image using OpenCV
