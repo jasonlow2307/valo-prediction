@@ -7,6 +7,8 @@ import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
 from tensorflow.keras.callbacks import EarlyStopping
+from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def preprocess_image(image_path, mask_path):
     image = cv2.imread(image_path)
@@ -14,10 +16,22 @@ def preprocess_image(image_path, mask_path):
     mask_resized = cv2.resize(mask, (image.shape[1], image.shape[0]))  # Resize mask to fit image size
     minimap = cv2.bitwise_and(image, image, mask=mask_resized)
     rows, cols, _ = minimap.shape
-    minimap = minimap[0:int(rows//2.3), 0:int(cols//4)]
-    minimap_resized = cv2.resize(minimap, (64, 64))  # Resize to 64x64
+    minimap = minimap[0:int(rows // 2.3), 0:int(cols // 4)]
+    minimap_gray = cv2.cvtColor(minimap, cv2.COLOR_BGR2GRAY)
+    minimap_resized = cv2.resize(minimap_gray, (64, 64))  # Resize to 64x64
     minimap_normalized = minimap_resized / 255.0  # Normalize pixel values
     return minimap_normalized
+
+def preprocess_images_concurrently(image_paths, mask_path, desc):
+    preprocessed_images = []
+    with ThreadPoolExecutor() as executor:
+        futures = {executor.submit(preprocess_image, image_path, mask_path): image_path for image_path in image_paths}
+        for future in tqdm(as_completed(futures), total=len(image_paths), desc=desc):
+            try:
+                preprocessed_images.append(future.result())
+            except Exception as e:
+                print(f"Error processing image: {e}")
+    return preprocessed_images
 
 # Load the labels.csv file
 labels_df = pd.read_csv('labels.csv')
@@ -41,16 +55,15 @@ pacific_mask_path = 'images/mask_pacific.jpg'  # Path to the Pacific mask image
 normal_images = image_paths[:start_index]
 pacific_images = image_paths[start_index:]
 
-# Preprocess images
-normal_preprocessed = [preprocess_image(image_path, mask_path) for image_path in normal_images]
-pacific_preprocessed = [preprocess_image(image_path, pacific_mask_path) for image_path in pacific_images]
+# Preprocess images with progress bar and concurrent processing
+normal_preprocessed = preprocess_images_concurrently(normal_images, mask_path, "Processing normal images")
+pacific_preprocessed = preprocess_images_concurrently(pacific_images, pacific_mask_path, "Processing pacific images")
 
 # Combine preprocessed images
 combined_images = np.array(normal_preprocessed + pacific_preprocessed)
 
 # Ensure combined_images has the correct shape for model training
-if combined_images.shape[-1] == 1:
-    combined_images = np.repeat(combined_images, 3, axis=-1)  # Repeat grayscale channel to make it 3 channels
+combined_images = np.expand_dims(combined_images, axis=-1)  # Add channel dimension for grayscale images
 
 # Combine winrates correspondingly
 combined_winrates = np.array(list(winrates[:start_index]) + list(winrates[start_index:]))
@@ -63,13 +76,13 @@ y_train = np.array(y_train)
 y_val = np.array(y_val)
 
 model = Sequential([
-    tf.keras.Input(shape=(64, 64, 3)),
+    tf.keras.Input(shape=(64, 64, 1)),  # Input shape for grayscale images
     Conv2D(32, (3, 3), activation='relu'),
     MaxPooling2D((2, 2)),
-    
+
     Conv2D(64, (3, 3), activation='relu'),
     MaxPooling2D((2, 2)),
-    
+
     Conv2D(128, (3, 3), activation='relu'),
     MaxPooling2D((2, 2)),
 
@@ -78,7 +91,7 @@ model = Sequential([
 
     Conv2D(512, (3, 3), activation='relu', padding='same'),  # Adjusted padding to 'same'
     MaxPooling2D((2, 2)),  # Ensure the output dimensions are suitable for the next layers
-    
+
     Flatten(),
     Dense(128, activation='relu'),
     Dense(1, activation='sigmoid')
@@ -119,6 +132,6 @@ print(f'ROC-AUC: {roc_auc}')
 # Example of predicting winrate for a new minimap
 new_minimap = preprocess_image('images/004.png', mask_path)
 new_minimap = np.expand_dims(new_minimap, axis=0)  # Add batch dimension
-new_minimap = np.repeat(new_minimap, 3, axis=-1)  # Repeat grayscale channel to make it 3 channels if necessary
+new_minimap = np.expand_dims(new_minimap, axis=-1)  # Add channel dimension for grayscale image
 predicted_winrate = model.predict(new_minimap)
 print(f'Predicted Winrate: {predicted_winrate[0][0]}')
