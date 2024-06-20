@@ -12,23 +12,23 @@ import pygetwindow as gw
 model = tf.keras.models.load_model('model.h5')
 
 selected_window = None
-screenshot_interval = 0.5  # Interval in seconds
+screenshot_interval = 0.25  # Interval in seconds
 win_rate_history = deque(maxlen=60)  # Store last 60 seconds of win rates
 
 def capture_and_preprocess(selected_window):
     screenshot = pyautogui.screenshot(region=(selected_window.left, selected_window.top, selected_window.width, selected_window.height))
     frame = np.array(screenshot)
-    mask = cv2.imread('images/mask.png', 0)
+    mask = cv2.imread('images/mask_pacific.jpg', 0)
     mask_resized = cv2.resize(mask, (frame.shape[1], frame.shape[0]))  # Resize mask to fit image size
     minimap = cv2.bitwise_and(frame, frame, mask=mask_resized)
     rows, cols, _ = minimap.shape
     minimap = minimap[0:int(rows//2.3), 0:int(cols//4)]
-    minimap_gray = cv2.cvtColor(minimap, cv2.COLOR_BGR2GRAY)
-    minimap_resized = cv2.resize(minimap_gray, (64, 64))  # Resize to 64x64
+    #minimap_gray = cv2.cvtColor(minimap, cv2.COLOR_BGR2GRAY)
+    minimap_resized = cv2.resize(minimap, (64, 64))  # Resize to 64x64
     minimap_normalized = minimap_resized / 255.0  # Normalize pixel values
     
     # Display processed image using OpenCV
-    cv2.imshow('Processed Minimap', minimap_normalized)
+    cv2.imshow('Processed Minimap', minimap)
     cv2.waitKey(1)  # Required for imshow to work properly
     
     return minimap_normalized
@@ -42,17 +42,24 @@ def update_live_plot():
     global win_rate_history
     plt.ion()  # Turn on interactive mode for live plotting
     fig, ax = plt.subplots()
-    line, = ax.plot([], [], '-o')
+    green_line, = ax.plot([], [], 'g-', label='Win Rate')  # Green line for win rate
+    red_line, = ax.plot([], [], 'r-', label='Complement Win Rate')  # Red line for complement
     ax.set_xlim(0, 60)
     ax.set_ylim(0, 1)
     ax.set_xlabel('Time (seconds)')
     ax.set_ylabel('Win Rate')
     plt.title('Live Win Rate')
+    plt.legend()
 
     while True:
         win_rates = list(win_rate_history)
+        complement_win_rates = [1 - rate for rate in win_rates]  # Complement win rate
         x_data = list(range(len(win_rates)))
-        line.set_data(x_data, win_rates)
+        green_line.set_data(x_data, win_rates)
+        red_line.set_data(x_data, complement_win_rates)
+        ax.relim()
+        ax.autoscale_view()
+        plt.draw()
         plt.pause(1)  # Update plot every second
 
 def main():
