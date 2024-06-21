@@ -16,7 +16,7 @@ def preprocess_image(image_path, mask_path):
     mask_resized = cv2.resize(mask, (image.shape[1], image.shape[0]))  # Resize mask to fit image size
     minimap = cv2.bitwise_and(image, image, mask=mask_resized)
     rows, cols, _ = minimap.shape
-    minimap = minimap[0:int(rows // 2.3), 0:int(cols // 4)]
+    #minimap = minimap[0:int(rows // 2.3), 0:int(cols // 4)]
     minimap_gray = cv2.cvtColor(minimap, cv2.COLOR_BGR2GRAY)
     minimap_resized = cv2.resize(minimap_gray, (64, 64))  # Resize to 64x64
     minimap_normalized = minimap_resized / 255.0  # Normalize pixel values
@@ -48,8 +48,8 @@ winrates = labels_df['win'].values  # Or labels_df['win'].values for binary labe
 start_index = next(i for i, image_path in enumerate(image_paths) if '1718788568.5275614.jpg' in image_path.split('/')[-1])
 print("PACIFIC INDEX:", start_index)
 
-mask_path = 'images/mask.png'  # Path to the mask image
-pacific_mask_path = 'images/mask_pacific.jpg'  # Path to the Pacific mask image
+mask_path = 'images/mask_player_info.png'  # Path to the mask image
+pacific_mask_path = 'images/mask_pacific_player_info.jpg'  # Path to the Pacific mask image
 
 # Select all images from the starting index onwards
 normal_images = image_paths[:start_index]
@@ -113,7 +113,7 @@ print(f'Validation Loss: {loss}')
 print(f'Validation Accuracy: {accuracy}')
 
 # Save the model to HDF5 file
-model.save('model.h5')
+model.save('model_with_player_info.h5')
 
 # Predict class labels
 y_pred_prob = model.predict(X_val)
