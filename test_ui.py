@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 # Load the screenshot
-image = cv2.imread('images/003.png')
+image = cv2.imread('images/001.png')
 
 # Function to process the image and return contours of the target color
 def process_image(image, target_color, threshold=50):
@@ -21,6 +21,34 @@ def process_image(image, target_color, threshold=50):
 
     contours, _ = cv2.findContours(mask_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     return contours, mask_closed
+
+def filter_points(points, part):
+    if (part == "Left"):
+        points_sorted = sorted(points, key=lambda x: cv2.boundingRect(x)[0])  # Sort by x-coordinate
+    else:
+        points_sorted = sorted(points, key=lambda x: cv2.boundingRect(x)[0], reverse=True)
+    valid_points = []
+    y_values = [cv2.boundingRect(point)[1] for point in points_sorted]  # Extract all y values
+
+    for point in points_sorted:
+        x, y = cv2.boundingRect(point)[:2]
+        remainder_107 = y % 107
+
+        # Check if the remainder is around 64 (valid points)
+        if 60 <= remainder_107 <= 70:
+            # Ensure no other valid point has a similar y value but x difference exceeds 140
+            if all(abs(x - cv2.boundingRect(vp)[0]) <= 140 for vp in valid_points if abs(y - cv2.boundingRect(vp)[1]) <= 2):
+                valid_points.append(point)
+            # Check if it has a unique y value
+            elif y_values.count(y) == 1:
+                if all(abs(x - cv2.boundingRect(vp)[0]) <= 140 for vp in valid_points if abs(y - cv2.boundingRect(vp)[1]) <= 2):
+                    valid_points.append(point)
+        # Check if the remainder is around 92 (noise points)
+        elif 90 <= remainder_107 <= 94:
+            continue  # Skip noise points
+
+    return valid_points
+
 
 def count_shapes(img):
     # Display the cropped regions for verification
@@ -56,12 +84,21 @@ def count_shapes(img):
         ult_points = [contour for contour in ult_contours if min_area_ult <= cv2.contourArea(contour) <= max_area_ult]
         ability_points = [contour for contour in ability_contours if min_area_ability <= cv2.contourArea(contour) <= max_area_ability]
 
+        # Filter points based on y-distance
+        if image is left_region:
+            direction = "Left"
+        else:
+            direction = "Right"
+
+        ult_points = filter_points(ult_points, direction)
+        ability_points = filter_points(ability_points, direction)
+
         num_ult_points = len(ult_points)
         num_ability_points = len(ability_points)
 
         # Draw contours on the image for visualization
         image_with_contours = image.copy()
-        #cv2.drawContours(image_with_contours, ult_points, -1, (0, 255, 0), 2)  # Green for ult points
+        cv2.drawContours(image_with_contours, ult_points, -1, (0, 255, 0), 2)  # Green for ult points
         cv2.drawContours(image_with_contours, ability_points, -1, (0, 0, 255), 2)  # Red for ability points
 
         # Visualization
