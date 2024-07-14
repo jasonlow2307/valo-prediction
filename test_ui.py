@@ -3,7 +3,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 # Load the screenshot
-image = cv2.imread('images/001.png')
+#image = cv2.imread('images/001.png')
+image = cv2.imread('output/screenshots/1719487948.4992635.jpg')
 
 # Function to process the image and return contours of the target color
 def process_image(image, target_color, threshold=50):
@@ -22,31 +23,67 @@ def process_image(image, target_color, threshold=50):
     contours, _ = cv2.findContours(mask_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     return contours, mask_closed
 
-def filter_points(points, part):
-    if (part == "Left"):
-        points_sorted = sorted(points, key=lambda x: cv2.boundingRect(x)[0])  # Sort by x-coordinate
-    else:
-        points_sorted = sorted(points, key=lambda x: cv2.boundingRect(x)[0], reverse=True)
-    valid_points = []
-    y_values = [cv2.boundingRect(point)[1] for point in points_sorted]  # Extract all y values
+def filter_points(points, part, type):
+    if (type == "Ability"):
+        if (part == "Left"):
+            points_sorted = sorted(points, key=lambda x: cv2.boundingRect(x)[0])  # Sort by x-coordinate
+        else:
+            points_sorted = sorted(points, key=lambda x: cv2.boundingRect(x)[0], reverse=True)
+        valid_points = []
+        y_values = [cv2.boundingRect(point)[1] for point in points_sorted]  # Extract all y values
 
-    for point in points_sorted:
-        x, y = cv2.boundingRect(point)[:2]
-        remainder_107 = y % 107
+        for point in points_sorted:
+            x, y = cv2.boundingRect(point)[:2]
+            remainder_107 = y % 107
 
-        # Check if the remainder is around 64 (valid points)
-        if 60 <= remainder_107 <= 70:
-            # Ensure no other valid point has a similar y value but x difference exceeds 140
-            if all(abs(x - cv2.boundingRect(vp)[0]) <= 140 for vp in valid_points if abs(y - cv2.boundingRect(vp)[1]) <= 2):
-                valid_points.append(point)
-            # Check if it has a unique y value
-            elif y_values.count(y) == 1:
+            # Check if the remainder is around 64 (valid points)
+            if 60 <= remainder_107 <= 70:
+                # Ensure no other valid point has a similar y value but x difference exceeds 140
                 if all(abs(x - cv2.boundingRect(vp)[0]) <= 140 for vp in valid_points if abs(y - cv2.boundingRect(vp)[1]) <= 2):
                     valid_points.append(point)
-        # Check if the remainder is around 92 (noise points)
-        elif 90 <= remainder_107 <= 94:
-            continue  # Skip noise points
+                # Check if it has a unique y value
+                elif y_values.count(y) == 1:
+                    if all(abs(x - cv2.boundingRect(vp)[0]) <= 140 for vp in valid_points if abs(y - cv2.boundingRect(vp)[1]) <= 2):
+                        valid_points.append(point)
+            # Check if the remainder is around 92 (noise points)
+            elif 90 <= remainder_107 <= 94:
+                continue  # Skip noise points
+    else:
+        if (part == "Left"):
+            points_sorted = sorted(points, key=lambda x: cv2.boundingRect(x)[0])  # Sort by x-coordinate
+        else:
+            points_sorted = sorted(points, key=lambda x: cv2.boundingRect(x)[0], reverse=True)
+        valid_points = []
+        y_values = [cv2.boundingRect(point)[1] for point in points_sorted]  # Extract all y values
 
+        for point in points_sorted:
+            x, y = cv2.boundingRect(point)[:2]
+            remainder_107 = y % 107
+
+            # Check if the remainder is around 64 (valid points)
+            if 90 <= remainder_107 <= 100:
+                if (part=="Left"):
+                    if x < 255 and x > 120:
+                        valid_points.append(point)
+                        print("LEFT", x, y)
+                        continue
+                else:
+                    if x > 90 and x < 210:
+                        valid_points.append(point)
+                        print("RIGHT", x, y)
+                        continue
+                # Check if it has a unique y value
+                if y_values.count(y) == 1:
+                    if (part=="Left"):
+                        if x < 255 and x > 120:
+                            valid_points.append(point)
+                            print("LEFT", x, y)
+                            continue
+                    else:
+                        if x > 90 and x < 210:
+                            valid_points.append(point)
+                            print("RIGHT", x, y)
+                            continue
     return valid_points
 
 
@@ -76,10 +113,10 @@ def count_shapes(img):
         ability_contours, ability_mask = process_image(image, target_color)
 
         # Define area ranges for ult points and ability points
-        min_area_ult = 25
-        max_area_ult = 50
-        min_area_ability = 5
-        max_area_ability = 15
+        min_area_ult = 3
+        max_area_ult = 15
+        min_area_ability = 20
+        max_area_ability = 55
 
         ult_points = [contour for contour in ult_contours if min_area_ult <= cv2.contourArea(contour) <= max_area_ult]
         ability_points = [contour for contour in ability_contours if min_area_ability <= cv2.contourArea(contour) <= max_area_ability]
@@ -90,8 +127,8 @@ def count_shapes(img):
         else:
             direction = "Right"
 
-        ult_points = filter_points(ult_points, direction)
-        ability_points = filter_points(ability_points, direction)
+        ult_points = filter_points(ult_points, direction, "Ult")
+        ability_points = filter_points(ability_points, direction, "Ability")
 
         num_ult_points = len(ult_points)
         num_ability_points = len(ability_points)
