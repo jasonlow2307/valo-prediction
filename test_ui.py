@@ -124,8 +124,8 @@ def count_shapes(img):
         # Define area ranges for ult points and ability points
         min_area_ult_points = 3
         max_area_ult_points = 15
-        min_area_ult = 1500
-        max_area_ult = 1700
+        min_area_ult = 1000
+        max_area_ult = 1200
         min_area_ability = 20
         max_area_ability = 55
 
@@ -144,12 +144,13 @@ def count_shapes(img):
 
         num_ult_points = len(ult_points)
         num_ability_points = len(ability_points)
+        num_ults = len(ults)
 
         # Draw contours on the image for visualization
         image_with_contours = image.copy()
         cv2.drawContours(image_with_contours, ult_points, -1, (0, 255, 0), 2)  # Green for ult points
         cv2.drawContours(image_with_contours, ability_points, -1, (0, 0, 255), 2)  # Red for ability points
-        #cv2.drawContours(image_with_contours, ults, -1, (255, 0, 0), 2)  # Red for ability points
+        cv2.drawContours(image_with_contours, ults, -1, (255, 0, 0), 2)  # Red for ability points
 
         # Visualization
         plt.subplot(2, 2, idx * 2 + 1)
@@ -160,7 +161,7 @@ def count_shapes(img):
         plt.subplot(2, 2, idx * 2 + 2)
         combined_mask = ult_mask | ability_mask
         plt.imshow(combined_mask, cmap='gray')
-        plt.title('Ult Points: {} | Ability Points: {}'.format(num_ult_points, num_ability_points))
+        plt.title('Ult Points: {} | Ability Points: {} | Ults {}'.format(num_ult_points, num_ability_points, num_ults))
         plt.axis('off')
 
     plt.show()
