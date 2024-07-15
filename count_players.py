@@ -4,9 +4,49 @@ from matplotlib import pyplot as plt
 
 # Load the screenshot
 #image = cv2.imread('output/screenshots/1718764797.863994.png')
-image = cv2.imread('images/002.png')
+#image = cv2.imread('images/002.png')
+image = cv2.imread('output/screenshots/1719488208.457024.jpg')
+
+def color(image):
+    # Convert the image to RGB
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    
+    # Extract the color value at (17, 800)
+    color_value = image_rgb[17, 800, :]
+
+    # Print the color value
+    print("Color value at (17, 800):", color_value)
+
+    # Define target colors
+    red_color = np.array([105, 44, 49])
+    green_color = np.array([40, 133, 114])
+
+    # Calculate the Euclidean distances to the target colors
+    distance_to_red = np.linalg.norm(color_value - red_color)
+    distance_to_green = np.linalg.norm(color_value - green_color)
+
+    # Create a small 1x1 image with the extracted color value for visualization
+    color_image = np.zeros((100, 100, 3), dtype=np.uint8)
+    color_image[:, :] = color_value
+
+    '''
+    # Display the color
+    plt.imshow(color_image)
+    plt.title("Color at (17, 800)")
+    plt.axis('off')
+    plt.show()
+    '''
+
+    # Determine the closest color
+    if distance_to_red < distance_to_green:
+        print("The color is closer to red.")
+        return "Red"
+    else:
+        print("The color is closer to green.")
+        return "Green"
 
 def count_players(img):
+    c = color(img)
     # Display the cropped regions for verification
     rows, cols, _ = img.shape
 
@@ -27,12 +67,19 @@ def count_players(img):
 
     for idx, image in enumerate(images):
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        # Define the RGB values to search for with a threshold
-        if idx == 0:
-            target_color = (30, 255, 197)
+      
+        if (c == "Red"):
+            # Define the RGB values to search for with a threshold
+            if idx == 0:
+                target_color = (255, 81, 95)
+            else:
+                target_color = (30, 255, 197)
         else:
-            target_color = (255, 81, 95)
+            # Define the RGB values to search for with a threshold
+            if idx == 0:
+                target_color = (30, 255, 197)
+            else:
+                target_color = (255, 81, 95)
         
         threshold = 30  # Adjust this based on your tolerance for color variation
 
@@ -46,8 +93,19 @@ def count_players(img):
         # Find contours in the closed mask
         contours, _ = cv2.findContours(mask_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        # Count the number of contours (players)
-        num_players = len(contours)
+        # Sort contours by y value
+        contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[1])
+
+        # Filter contours based on the remainder condition and minimum area
+        filtered_contours = []
+        for contour in contours:
+            x, y, w, h = cv2.boundingRect(contour)
+            area = cv2.contourArea(contour)
+            if (y % 105) >= 80 and (y % 105) <= 85 and area >= 10:
+                filtered_contours.append(contour)
+
+        # Count the number of filtered contours (players)
+        num_players = len(filtered_contours)
 
         # Visualization
         plt.subplot(2, 2, idx * 2 + 1)
@@ -57,7 +115,7 @@ def count_players(img):
 
         plt.subplot(2, 2, idx * 2 + 2)
         plt.imshow(mask_closed, cmap='gray')
-        plt.title('Health Bars ({} players)'.format(num_players))  # Calculate number of players
+        plt.title(f'Health Bars ({num_players} players)')
         plt.axis('off')
 
     plt.show()
