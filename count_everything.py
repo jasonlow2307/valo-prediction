@@ -8,11 +8,13 @@ from matplotlib import pyplot as plt
 image = cv2.imread('output/screenshots/1719488208.457024.jpg')
 
 def color(image):
+    rows, cols, _ = image.shape
+
     # Convert the image to RGB
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     
     # Extract the color value at (17, 800)
-    color_value = image_rgb[17, 800, :]
+    color_value = image_rgb[int(rows*0.0157), int(cols*0.417), :]
 
     # Print the color value
     print("Color value at (17, 800):", color_value)
@@ -24,18 +26,6 @@ def color(image):
     # Calculate the Euclidean distances to the target colors
     distance_to_red = np.linalg.norm(color_value - red_color)
     distance_to_green = np.linalg.norm(color_value - green_color)
-
-    # Create a small 1x1 image with the extracted color value for visualization
-    color_image = np.zeros((100, 100, 3), dtype=np.uint8)
-    color_image[:, :] = color_value
-
-    '''
-    # Display the color
-    plt.imshow(color_image)
-    plt.title("Color at (17, 800)")
-    plt.axis('off')
-    plt.show()
-    '''
 
     # Determine the closest color
     if distance_to_red < distance_to_green:
