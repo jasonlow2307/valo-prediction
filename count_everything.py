@@ -4,7 +4,48 @@ from matplotlib import pyplot as plt
 
 # Load the screenshot
 #image = cv2.imread('output/screenshots/1718764832.027849.png')
-image = cv2.imread('images/001.png')
+#image = cv2.imread('images/001.png')
+image = cv2.imread('output/screenshots/1719488208.457024.jpg')
+
+def color(image):
+    # Convert the image to RGB
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    
+    # Extract the color value at (17, 800)
+    color_value = image_rgb[17, 800, :]
+
+    # Print the color value
+    print("Color value at (17, 800):", color_value)
+
+    # Define target colors
+    red_color = np.array([105, 44, 49])
+    green_color = np.array([40, 133, 114])
+
+    # Calculate the Euclidean distances to the target colors
+    distance_to_red = np.linalg.norm(color_value - red_color)
+    distance_to_green = np.linalg.norm(color_value - green_color)
+
+    # Create a small 1x1 image with the extracted color value for visualization
+    color_image = np.zeros((100, 100, 3), dtype=np.uint8)
+    color_image[:, :] = color_value
+
+    '''
+    # Display the color
+    plt.imshow(color_image)
+    plt.title("Color at (17, 800)")
+    plt.axis('off')
+    plt.show()
+    '''
+
+    # Determine the closest color
+    if distance_to_red < distance_to_green:
+        print("The color is closer to red.")
+        return "Red"
+    else:
+        print("The color is closer to green.")
+        return "Green"
+    
+
 
 # Function to process the image and return contours of the target color
 def process_image(image, target_color, threshold=50):
@@ -34,12 +75,12 @@ def filter_points(points, part, type, cols, rows):
             remainder_107 = y % int(rows * 0.099)
 
             if 0.056 <= remainder_107 / rows <= 0.065:
-                if part == "Left" and x / cols > 0.047:
+                if part == "Left" and x / cols < 0.17:
                     if all(abs(x - cv2.boundingRect(vp)[0]) <= int(cols * 0.073) for vp in valid_points if abs(y - cv2.boundingRect(vp)[1]) <= int(rows * 0.002)):
                         valid_points.append(point)
                     elif y_values.count(y) == 1 and all(abs(x - cv2.boundingRect(vp)[0]) <= int(cols * 0.073) for vp in valid_points if abs(y - cv2.boundingRect(vp)[1]) <= int(rows * 0.002)):
                         valid_points.append(point)
-                elif part == "Right" and x / cols < 0.135:
+                elif part == "Right" and x / cols > 0.059:
                     if all(abs(x - cv2.boundingRect(vp)[0]) <= int(cols * 0.073) for vp in valid_points if abs(y - cv2.boundingRect(vp)[1]) <= int(rows * 0.002)):
                         valid_points.append(point)
                     elif y_values.count(y) == 1 and all(abs(x - cv2.boundingRect(vp)[0]) <= int(cols * 0.073) for vp in valid_points if abs(y - cv2.boundingRect(vp)[1]) <= int(rows * 0.002)):
@@ -75,7 +116,7 @@ def filter_points(points, part, type, cols, rows):
                         continue
     return valid_points
 
-def count_players(img):
+def count_players(img, direction):
     rows, cols, _ = img.shape
     print("ROWS", rows)
     print("COLS", cols)
@@ -95,17 +136,27 @@ def count_players(img):
 
     images = [left_region, right_region]
 
-    num_players = [0, 0]  # Stores the number of players alive for left and right
+    c = color(img)
+    
+
+    num_players = [0, 0]
 
     for idx, image in enumerate(images):
+        if (c == "Red"):
+            # Define the RGB values to search for with a threshold
+            if idx == 0:
+                target_color = (255, 81, 95)
+            else:
+                target_color = (30, 255, 197)
+        else:
+            # Define the RGB values to search for with a threshold
+            if idx == 0:
+                target_color = (30, 255, 197)
+            else:
+                target_color = (255, 81, 95)
+
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        # Define the RGB values to search for with a threshold
-        if idx == 0:
-            target_color = (30, 255, 197)
-        else:
-            target_color = (255, 81, 95)
-        
         threshold = 30  # Adjust this based on your tolerance for color variation
 
         # Create a mask for pixels with RGB values within the threshold range
@@ -167,7 +218,7 @@ def count_shapes(img):
         num_ult_points = len(ult_points)
         num_ability_points = len(ability_points)
         num_ults = len(ults)
-        num_alive_players = count_players(img)
+        num_alive_players = count_players(img, direction)
 
         print(f"{direction} side:")
         print(f"Number of players alive: {num_alive_players[idx]}")
@@ -186,3 +237,5 @@ def count_shapes(img):
         plt.show()
 
 count_shapes(image)
+cv2.waitKey()
+cv2.destroyAllWindows()
