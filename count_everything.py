@@ -126,6 +126,7 @@ def count_players(img):
     c = color(img)
 
     num_players = [0, 0]
+    players_health = [0, 0]
 
     for idx, image in enumerate(images):
         if c == "Red":
@@ -160,16 +161,19 @@ def count_players(img):
 
         # Filter contours based on the remainder condition and minimum area
         filtered_contours = []
+        health = []
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
             area = cv2.contourArea(contour)
             if (y % 105) >= 80 and (y % 105) <= 85 and area >= 10:
                 filtered_contours.append(contour)
+                health.append(w)
 
         # Count the number of filtered contours (players)
         num_players[idx] = len(filtered_contours)
+        players_health[idx] = health
 
-    return num_players
+    return num_players, players_health
 
 def count_shapes(img):
     rows, cols, _ = img.shape
@@ -215,10 +219,11 @@ def count_shapes(img):
         num_ult_points = len(ult_points)
         num_ability_points = len(ability_points)
         num_ults = len(ults)
-        num_alive_players = count_players(img)
+        num_alive_players, players_health = count_players(img)
 
         print(f"{direction} side:")
         print(f"Number of players alive: {num_alive_players[idx]}")
+        print(f"Players' health: {players_health[idx]}")
         print(f"Number of ult points: {num_ult_points}")
         print(f"Number of ability points: {num_ability_points}")
         print(f"Number of ults available: {num_ults}")

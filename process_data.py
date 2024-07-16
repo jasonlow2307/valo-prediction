@@ -42,6 +42,7 @@ def count_players(img, direction):
     c = color(img)
     
     num_players = [0, 0]
+    players_health = [0, 0]
 
     for idx, image in enumerate(images):
         if c == "Red":
@@ -67,16 +68,19 @@ def count_players(img, direction):
 
         # Filter contours based on the remainder condition and minimum area
         filtered_contours = []
+        health = []
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
             area = cv2.contourArea(contour)
             if (y % 105) >= 80 and (y % 105) <= 85 and area >= 10:
                 filtered_contours.append(contour)
+                health.append(w)
 
         # Count the number of filtered contours (players)
         num_players[idx] = len(filtered_contours)
+        players_health[idx] = health
 
-    return num_players
+    return num_players, players_health
 
 # Function to process the image and return contours of the target color
 def process_image(image, target_color, threshold=50):
@@ -161,6 +165,12 @@ def count_shapes(img):
 
     images = [left_region, right_region]
 
+    num_alive_players = [0, 0]
+    num_ability_points = [0, 0]
+    num_ult_points = [0, 0]
+    num_ults = [0, 0]
+    players_health = [0, 0]
+
     for idx, image in enumerate(images):
         target_color = (255, 255, 255)  # Adjust if necessary
         
@@ -183,60 +193,92 @@ def count_shapes(img):
         ult_points = filter_points(ult_points, direction, "Ult", cols, rows)
         ability_points = filter_points(ability_points, direction, "Ability", cols, rows)
 
-        num_ult_points = len(ult_points)
-        num_ability_points = len(ability_points)
-        num_ults = len(ults)
-        num_alive_players = count_players(img, direction)
+        num_ult_points[idx] = len(ult_points)
+        num_ability_points[idx] = len(ability_points)
+        num_ults[idx] = len(ults)
+        num_alive_players, players_health = count_players(img, direction)
 
-        return num_alive_players[idx], num_ability_points, num_ult_points, num_ults
+        # Fill in players health to 5
+        if (len(players_health[idx]) < 5):
+            num_dead_players = 5 - len(players_health[idx])
+            for i in range(num_dead_players):
+                players_health[idx].append(0)
+        if (len(players_health[idx]) > 5): # Get first five values if more than 5 health values detected
+            players_health[idx] = players_health[idx][:5]
 
+    return num_alive_players, num_ability_points, num_ult_points, num_ults, players_health
 
 def process_labels(input_file, output_file):
+    i = 0
     def process_image_row(row):
         image_path, green_win = row
+        image_path = image_path.replace("\\", "/")
         img = cv2.imread(image_path)
         if img is None:
             print(f"Unable to read image: {image_path}")
             return None
 
         green_win = int(green_win)
-        if green_win == 1:
-            green_players_alive, green_ability_count, green_ult_points, green_ults = count_shapes(img)
-            red_players_alive = count_players(img, "Right")[1]
-            red_ability_count = count_shapes(img)[1]
-            red_ult_points = count_shapes(img)[2]
-            red_ults = count_shapes(img)[3]
+        left_team = color(img)
+        if left_team == "Green":
+            num_alive_players, num_ability_points, num_ult_points, num_ults, players_health = count_shapes(img)
+            green_players_alive = num_alive_players[0]
+            green_ability_count = num_ability_points[0]
+            green_ult_points = num_ult_points[0]
+            green_ults = num_ults[0]
+            green_healths = players_health[0]
+
+            red_players_alive = num_alive_players[1]
+            red_ability_count = num_ability_points[1]
+            red_ult_points = num_ult_points[1]
+            red_ults = num_ults[1]
+            red_healths = players_health[1]
         else:
-            red_players_alive, red_ability_count, red_ult_points, red_ults = count_shapes(img)
-            green_players_alive = count_players(img, "Left")[0]
-            green_ability_count = count_shapes(img)[1]
-            green_ult_points = count_shapes(img)[2]
-            green_ults = count_shapes(img)[3]
+            num_alive_players, num_ability_points, num_ult_points, num_ults, players_health = count_shapes(img)
+            green_players_alive = num_alive_players[1]
+            green_ability_count = num_ability_points[1]
+            green_ult_points = num_ult_points[1]
+            green_ults = num_ults[1]
+            green_healths = players_health[1]
+            
+            red_players_alive = num_alive_players[0]
+            red_ability_count = num_ability_points[0]
+            red_ult_points = num_ult_points[0]
+            red_ults = num_ults[0]
+            red_healths = players_health[0]
 
         return [
-            image_path, green_players_alive, green_ability_count, green_ult_points, green_ults,
-            red_players_alive, red_ability_count, red_ult_points, red_ults, green_win
+            image_path, green_players_alive, green_ability_count, green_healths, green_ults,
+            red_players_alive, red_ability_count, red_healths, red_ults, green_win
         ]
 
     with open(input_file, 'r') as f:
         reader = csv.reader(f)
         next(reader)  # Skip header if exists
         rows = list(reader)
+        print("Reading", len(rows), "rows")
 
     total_images = len(rows)
+    print("Done Reading")
+
+    print("Preparing to process", total_images, "images")
 
     with ThreadPoolExecutor() as executor:
         results = list(executor.map(process_image_row, rows))
 
+    print("Done Preprocessing")
+
     with open(output_file, 'w', newline='') as fout:
         writer = csv.writer(fout)
         writer.writerow([
-            'image path', 'green_players alive', 'green_ability_count', 'green_ult_points', 'green_ults',
-            'red_players_alive', 'red_ability_count', 'red_ult_points', 'red_ults', 'green_win'
+            'image path', 'green_players alive', 'green_ability_count', 'green_healths', 'green_ults',
+            'red_players_alive', 'red_ability_count', 'red_healths', 'red_ults', 'green_win'
         ])
         for result in results:
             if result is not None:
                 writer.writerow(result)
+                print(f"Processed {i}/{total_images}")
+                i+=1
 
 # Example usage:
-process_labels('output/screenshots/labels.csv', 'data3.csv')
+process_labels('output/screenshots/labels.csv', 'data4.csv')

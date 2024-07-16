@@ -98,10 +98,12 @@ def count_players(img):
 
         # Filter contours based on the remainder condition and minimum area
         filtered_contours = []
+        players_health = []
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
             area = cv2.contourArea(contour)
             if (y % 105) >= 80 and (y % 105) <= 85 and area >= 10:
+                players_health.append(w)
                 filtered_contours.append(contour)
 
         # Count the number of filtered contours (players)
@@ -115,7 +117,7 @@ def count_players(img):
 
         plt.subplot(2, 2, idx * 2 + 2)
         plt.imshow(mask_closed, cmap='gray')
-        plt.title(f'Health Bars ({num_players} players)')
+        plt.title(f'Health Bars ({num_players} players) - {players_health}')
         plt.axis('off')
 
     plt.show()
