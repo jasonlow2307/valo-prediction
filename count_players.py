@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 # Load the screenshot
 #image = cv2.imread('output/screenshots/1718764797.863994.png')
 #image = cv2.imread('images/002.png')
-image = cv2.imread('output/screenshots/1719488208.457024.jpg')
+image = cv2.imread('output/screenshots/1719488223.220506.jpg')
 
 def color(image):
     # Convert the image to RGB
