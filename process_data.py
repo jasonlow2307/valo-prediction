@@ -211,7 +211,7 @@ def count_shapes(img):
         if (len(players_health[idx]) > 5): # Get first five values if more than 5 health values detected
             players_health[idx] = players_health[idx][:5]
 
-        player_health_1, player_health_2, player_health_3, player_health_4, player_health_5 = players_health[idx]
+        player_health_1[idx], player_health_2[idx], player_health_3[idx], player_health_4[idx], player_health_5[idx] = players_health[idx]
         
 
     return num_alive_players, num_ability_points, num_ult_points, num_ults, player_health_1, player_health_2, player_health_3, player_health_4, player_health_5 
@@ -225,23 +225,16 @@ def process_labels(input_file, output_file):
         if img is None:
             print(f"Unable to read image: {image_path}")
             return None
-        
         green_win = int(green_win)
         left_team = color(img)
         if left_team == "Green":
-            num_alive_players, num_ability_points, num_ult_points, num_ults, player_health_1, player_health_2, player_health_3, player_health_4, player_health_5  = count_shapes(img)
+            num_alive_players, num_ability_points, num_ult_points, num_ults, player_health_1, player_health_2, player_health_3, player_health_4, player_health_5 = count_shapes(img)
+            print("Type of player_health_1:", type(player_health_2))
+            print("Value of player_health_1:", player_health_2)
             green_players_alive = num_alive_players[0]
             green_ability_count = num_ability_points[0]
             green_ult_points = num_ult_points[0]
             green_ults = num_ults[0]
-            print(player_health_1)
-            '''
-            green_health_1 = players_health[0][0]
-            green_health_2 = players_health[0][1]
-            green_health_3 = players_health[0][2]
-            green_health_4 = players_health[0][3]
-            green_health_5 = players_health[0][4]
-            '''
             green_health_1 = player_health_1[0]
             green_health_2 = player_health_2[0]
             green_health_3 = player_health_3[0]
@@ -252,31 +245,17 @@ def process_labels(input_file, output_file):
             red_ability_count = num_ability_points[1]
             red_ult_points = num_ult_points[1]
             red_ults = num_ults[1]
-            '''
-            red_health_1 = players_health[1][0]
-            red_health_2 = players_health[1][1]
-            red_health_3 = players_health[1][2]
-            red_health_4 = players_health[1][3]
-            red_health_5 = players_health[1][4]
-            '''
             red_health_1 = player_health_1[1]
             red_health_2 = player_health_2[1]
             red_health_3 = player_health_3[1]
             red_health_4 = player_health_4[1]
             red_health_5 = player_health_5[1]
         else:
-            num_alive_players, num_ability_points, num_ult_points, num_ults, player_health_1, player_health_2, player_health_3, player_health_4, player_health_5  = count_shapes(img)
+            num_alive_players, num_ability_points, num_ult_points, num_ults, player_health_1, player_health_2, player_health_3, player_health_4, player_health_5 = count_shapes(img)
             green_players_alive = num_alive_players[1]
             green_ability_count = num_ability_points[1]
             green_ult_points = num_ult_points[1]
             green_ults = num_ults[1]
-            '''
-            green_health_1 = players_health[1][0]
-            green_health_2 = players_health[1][1]
-            green_health_3 = players_health[1][2]
-            green_health_4 = players_health[1][3]
-            green_health_5 = players_health[1][4]
-            '''
             green_health_1 = player_health_1[1]
             green_health_2 = player_health_2[1]
             green_health_3 = player_health_3[1]
@@ -287,13 +266,6 @@ def process_labels(input_file, output_file):
             red_ability_count = num_ability_points[0]
             red_ult_points = num_ult_points[0]
             red_ults = num_ults[0]
-            '''
-            red_health_1 = players_health[0][0]
-            red_health_2 = players_health[0][1]
-            red_health_3 = players_health[0][2]
-            red_health_4 = players_health[0][3]
-            red_health_5 = players_health[0][4]
-            '''
             red_health_1 = player_health_1[0]
             red_health_2 = player_health_2[0]
             red_health_3 = player_health_3[0]
@@ -324,14 +296,13 @@ def process_labels(input_file, output_file):
     with open(output_file, 'w', newline='') as fout:
         writer = csv.writer(fout)
         writer.writerow([
-            'image path', 'green_players alive', 'green_ability_count', 'green_health_1', 'green_health_2', 'green_health_3', 'green_health_4', 'green_health_5', 'green_ults',
+            'image path', 'green_players_alive', 'green_ability_count', 'green_health_1', 'green_health_2', 'green_health_3', 'green_health_4', 'green_health_5', 'green_ults',
             'red_players_alive', 'red_ability_count', 'red_health_1', 'red_health_2', 'red_health_3', 'red_health_4', 'red_health_5', 'red_ults', 'green_win'
         ])
-        for result in results:
-            if result is not None:
+        for i, result in enumerate(results):
+            if (result!=None):
                 writer.writerow(result)
-                print(f"Processed {i}/{total_images}")
-                i+=1
+                print(f"Processed {i+1}/{total_images}")
 
 # Example usage:
 process_labels('output/screenshots/labels.csv', 'data5.csv')

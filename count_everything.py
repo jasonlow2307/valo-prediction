@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 #image = cv2.imread('output/screenshots/1718764832.027849.png')
 #image = cv2.imread('images/001.png')
 #image = cv2.imread('output/screenshots/1719488208.457024.jpg')
-image = cv2.imread('output/screenshots/1719488223.220506.jpg')
+image = cv2.imread('output/screenshots/1718788718.4776547.jpg')
 
 def color(image):
     rows, cols, _ = image.shape
