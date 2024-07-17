@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from collections import deque
 import pygetwindow as gw
 
+
 ########## CAPTURING WINDOW ###########
 selected_window = None
 screenshot_interval = 0.2  # Interval in seconds
@@ -28,30 +29,57 @@ def capture_and_preprocess(selected_window):
     return features
 
 plt.ion()
+win_rate_history = deque(maxlen=60)  # Store last 60 seconds of win rates
+lock = threading.Lock()  # Lock for thread-safe access to win_rate_history
+extracted_features_history = []  # Global list to store extracted features
 
 def update_live_plot():
-    global win_rate_history
-    plt.ion()  # Turn on interactive mode for live plotting
-    fig, ax = plt.subplots()
-    green_line, = ax.plot([], [], 'g-', label='Win Rate')  # Green line for win rate
-    red_line, = ax.plot([], [], 'r-', label='Complement Win Rate')  # Red line for complement
-    ax.set_xlim(0, 60)
-    ax.set_ylim(0, 1)
-    ax.set_xlabel('Time (seconds)')
-    ax.set_ylabel('Win Rate')
+    global win_rate_history, extracted_features_history
+    
+    fig, ax1 = plt.subplots()
+    green_line, = ax1.plot([], [], 'g-', marker='o', markersize=5, label='Win Rate')  # Green line with markers
+    red_line, = ax1.plot([], [], 'r-', marker='o', markersize=5, label='Complement Win Rate')  # Red line with markers
+    ax1.set_xlim(0, 60)
+    ax1.set_ylim(-0.1, 1.1)  # Adjusted to show binary values
+    ax1.set_xlabel('Time (seconds)')
+    ax1.set_ylabel('Win Rate')
     plt.title('Live Win Rate')
     plt.legend()
 
+    ax2 = ax1.twinx()
+    ax2.set_ylim(-0.1, 1.1)  # Adjusted to show binary values
+    ax2.set_ylabel('Extracted Feature')  # Label for extracted feature
+
     while True:
-        win_rates = list(win_rate_history)
-        complement_win_rates = [1 - rate for rate in win_rates]  # Complement win rate
+        with lock:
+            win_rates = list(win_rate_history)
+            if extracted_features_history:
+                last_features = extracted_features_history[-1]  # Get the last extracted features
+                extracted_feature_value = last_features['green_players_alive']  # Example: Display green players alive
+            else:
+                extracted_feature_value = 0  # Default value if no features are available
+        
+        complement_win_rates = [1 if rate == 0 else 0 for rate in win_rates]  # Convert to binary
         x_data = list(range(len(win_rates)))
+
         green_line.set_data(x_data, win_rates)
         red_line.set_data(x_data, complement_win_rates)
-        ax.relim()
-        ax.autoscale_view()
+        
+        # Update extracted feature on the plot
+        if extracted_features_history:
+            ax2.clear()  # Clear previous content
+            ax2.plot(x_data[-1], extracted_feature_value, 'bo')  # Plot the extracted feature point
+        
+        ax1.relim()
+        ax1.autoscale_view()
+        ax2.relim()
+        ax2.autoscale_view()
+        
         plt.draw()
         plt.pause(0.2)  # Update plot every 0.2 seconds
+
+    plt.ioff()  # Turn off interactive mode after all plot setup is complete
+
 
 def select_window():
     global selected_window
@@ -136,10 +164,9 @@ def filter_points(points, part, type, cols, rows):
                         continue
     return valid_points
 
-def count_players(img, direction):
+def count_players(img):
     rows, cols, _ = img.shape
-    print(f"Processing image with dimensions: {rows}x{cols}")
-    
+
     top_left_y_left = int(rows * 0.486)
     bottom_right_y_left = int(rows * 1.019)
     top_left_x_left = int(cols * 0)
@@ -154,34 +181,63 @@ def count_players(img, direction):
     right_region = img[top_left_y_right:bottom_right_y_right, top_left_x_right:bottom_right_x_right]
 
     images = [left_region, right_region]
+
     c = color(img)
+
     num_players = [0, 0]
+    players_health = [0, 0]
 
     for idx, image in enumerate(images):
         if c == "Red":
-            target_color = (255, 81, 95) if idx == 0 else (30, 255, 197)
+            # Define the RGB values to search for with a threshold
+            if idx == 0:
+                target_color = (255, 81, 95)
+            else:
+                target_color = (30, 255, 197)
         else:
-            target_color = (30, 255, 197) if idx == 0 else (255, 81, 95)
+            # Define the RGB values to search for with a threshold
+            if idx == 0:
+                target_color = (30, 255, 197)
+            else:
+                target_color = (255, 81, 95)
 
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        threshold = 30
+
+        threshold = 30  # Adjust this based on your tolerance for color variation
+
+        # Create a mask for pixels with RGB values within the threshold range
         mask = np.all(np.abs(image_rgb - target_color) <= threshold, axis=-1)
+
+        # Perform closing operation on the mask
         kernel = np.ones((5, 5), np.uint8)
         mask_closed = cv2.morphologyEx(mask.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
-        contours, _ = cv2.findContours(mask_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        num_players[idx] = len(contours)
 
-    if c == "Green":
-        print("GREEN", num_players[0])
-        print("RED", num_players[1])
-    else:
-        print("RED", num_players[0])
-        print("GREEN", num_players[1])
-    return num_players
+        # Find contours in the closed mask
+        contours, _ = cv2.findContours(mask_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Sort contours by y value
+        contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[1])
+
+        # Filter contours based on the remainder condition and minimum area
+        filtered_contours = []
+        health = []
+        for contour in contours:
+            x, y, w, h = cv2.boundingRect(contour)
+            area = cv2.contourArea(contour)
+            if (y % 105) >= 80 and (y % 105) <= 85 and area >= 10:
+                filtered_contours.append(contour)
+                health.append(w)
+
+        # Count the number of filtered contours (players)
+        num_players[idx] = len(filtered_contours)
+        if (len(health) < 5):
+            health.extend([0] * (5 - len(health)))
+        players_health[idx] = health
+
+    return num_players, players_health
 
 def count_shapes(img):
     rows, cols, _ = img.shape
-    #print("Counting shapes in the image...")
 
     top_left_y_left = int(rows * 0.486)
     bottom_right_y_left = int(rows * 1.019)
@@ -197,15 +253,18 @@ def count_shapes(img):
     right_region = img[top_left_y_right:bottom_right_y_right, top_left_x_right:bottom_right_x_right]
 
     images = [left_region, right_region]
-    results = []
 
-    c = color(img)
+    num_ability_points = []
+    num_ults = []
+    num_ult_points = []
 
     for idx, image in enumerate(images):
-        target_color = (255, 255, 255)
+        target_color = (255, 255, 255)  # Adjust if necessary
+        
         ult_contours, ult_mask = process_image(image, target_color)
         ability_contours, ability_mask = process_image(image, target_color)
 
+        # Define area ranges for ult points and ability points
         min_area_ult_points = int(cols * rows * 0.0000014)
         max_area_ult_points = int(cols * rows * 0.0000072)
         min_area_ult = int(cols * rows * 0.00048)
@@ -222,51 +281,62 @@ def count_shapes(img):
         ult_points = filter_points(ult_points, direction, "Ult", cols, rows)
         ability_points = filter_points(ability_points, direction, "Ability", cols, rows)
 
-        num_ult_points = len(ult_points)
-        num_ability_points = len(ability_points)
-        num_ults = len(ults)
+        num_ult_points.append(len(ult_points))
+        num_ability_points.append(len(ability_points))
+        num_ults.append(len(ults))
+        num_alive_players, players_health = count_players(img)
 
-        
-        team = "GREEN" if c == "Green" else "RED"
-        opponent = "RED" if c == "Green" else "GREEN"
-        side = "LEFT" if idx == 0 else "RIGHT"
+        player_health_1 = []
+        player_health_2 = []
+        player_health_3 = []
+        player_health_4 = []
+        player_health_5 = []
 
-        print("\n===========================================\n")
+        for health in players_health:
+            player_health_1.append(health[0])
+            player_health_2.append(health[1])
+            player_health_3.append(health[2])
+            player_health_4.append(health[3])
+            player_health_5.append(health[4])
 
-        if side == "LEFT":
-            print(f"TEAM: {c.upper()} - Ults: {num_ults}, Ability Points: {num_ability_points}, Ult Points: {num_ult_points} - SIDE: {direction}")
-        else:
-            print(f"TEAM: {opponent.upper()} - Ults: {num_ults}, Ability Points: {num_ability_points}, Ult Points: {num_ult_points} - SIDE: {direction}")           
 
-        results.append((num_ults, num_ability_points, num_ult_points))
 
-        print("\n===========================================")
-
-    left_results = results[0]
-    right_results = results[1]
-
-    # Green always on the left
-    if color(img) == "Red":
-        return right_results + left_results 
-    else:
-        return left_results + right_results
+    return num_alive_players, num_ability_points, num_ult_points, num_ults, player_health_1, player_health_2, player_health_3, player_health_4, player_health_5 
 
 def extract_features(img):
     rows, cols, _ = img.shape
     print(f"Extracting features from image of size: {rows}x{cols}")
 
-    players_alive = count_players(img, "Left")
-    left_ults, left_ability_points, left_ult_points, right_ults, right_ability_points, right_ult_points = count_shapes(img)
+    num_alive_players, num_ability_points, num_ult_points, num_ults, player_health_1, player_health_2, player_health_3, player_health_4, player_health_5 = count_shapes(img)
+
+    if color(img) == "Green":
+        green = 0
+        red = 1
+    else:
+        green = 1
+        red = 0
+
+
 
     features = {
-        'green_players alive': players_alive[0],
-        'green_ability_count': left_ability_points,
-        'green_ult_points': left_ult_points,
-        'green_ults': left_ults,
-        'red_players_alive': players_alive[1],
-        'red_ability_count': right_ability_points,
-        'red_ult_points': right_ult_points,
-        'red_ults': right_ults
+        'green_players_alive' : num_alive_players[green],
+        'green_ability_count' : num_ability_points[green],
+        'green_health_1' : player_health_1[green],
+        'green_health_2' : player_health_2[green],
+        'green_health_3' : player_health_3[green],
+        'green_health_4' : player_health_4[green],
+        'green_health_5' : player_health_5[green],
+        'green_ults' : num_ults[green],
+        
+        'red_players_alive' : num_alive_players[red],
+        'red_ability_count' : num_ability_points[red],
+        'red_health_1' : player_health_1[red],
+        'red_health_2' : player_health_2[red],
+        'red_health_3' : player_health_3[red],
+        'red_health_4' : player_health_4[red],
+        'red_health_5' : player_health_5[red],
+        'red_ults' : num_ults[red]
+
     }
 
     df = pd.DataFrame([features])
@@ -309,3 +379,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
