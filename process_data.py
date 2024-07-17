@@ -21,67 +21,6 @@ def color(image):
     else:
         return "Green"
 
-def count_players(img, direction):
-    rows, cols, _ = img.shape
-
-    top_left_y_left = int(rows * 0.486)
-    bottom_right_y_left = int(rows * 1.019)
-    top_left_x_left = int(cols * 0)
-    bottom_right_x_left = int(cols * 0.182)
-
-    top_left_y_right = int(rows * 0.486)
-    bottom_right_y_right = int(rows * 1.019)
-    top_left_x_right = int(cols * 0.818)
-    bottom_right_x_right = cols
-
-    left_region = img[top_left_y_left:bottom_right_y_left, top_left_x_left:bottom_right_x_left]
-    right_region = img[top_left_y_right:bottom_right_y_right, top_left_x_right:bottom_right_x_right]
-
-    images = [left_region, right_region]
-
-    c = color(img)
-    
-    num_players = [0, 0]
-    players_health = [0, 0]
-
-    for idx, image in enumerate(images):
-        if c == "Red":
-            if idx == 0:
-                target_color = (255, 81, 95)
-            else:
-                target_color = (30, 255, 197)
-        else:
-            if idx == 0:
-                target_color = (30, 255, 197)
-            else:
-                target_color = (255, 81, 95)
-
-        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        threshold = 30
-        mask = np.all(np.abs(image_rgb - target_color) <= threshold, axis=-1)
-        kernel = np.ones((5, 5), np.uint8)
-        mask_closed = cv2.morphologyEx(mask.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
-        contours, _ = cv2.findContours(mask_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        # Sort contours by y value
-        contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[1])
-
-        # Filter contours based on the remainder condition and minimum area
-        filtered_contours = []
-        health = []
-        for contour in contours:
-            x, y, w, h = cv2.boundingRect(contour)
-            area = cv2.contourArea(contour)
-            if (y % 105) >= 80 and (y % 105) <= 85 and area >= 10:
-                filtered_contours.append(contour)
-                health.append(w)
-
-        # Count the number of filtered contours (players)
-        num_players[idx] = len(filtered_contours)
-        players_health[idx] = health
-
-    return num_players, players_health
-
 # Function to process the image and return contours of the target color
 def process_image(image, target_color, threshold=50):
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -147,7 +86,7 @@ def filter_points(points, part, type, cols, rows):
                         continue
     return valid_points
 
-def count_shapes(img):
+def count_players(img):
     rows, cols, _ = img.shape
 
     top_left_y_left = int(rows * 0.486)
@@ -165,16 +104,85 @@ def count_shapes(img):
 
     images = [left_region, right_region]
 
-    num_alive_players = [0, 0]
-    num_ability_points = [0, 0]
-    num_ult_points = [0, 0]
-    num_ults = [0, 0]
+    c = color(img)
+
+    num_players = [0, 0]
     players_health = [0, 0]
-    player_health_1 = [0, 0]
-    player_health_2 = [0, 0]
-    player_health_3 = [0, 0]
-    player_health_4 = [0, 0]
-    player_health_5 = [0, 0]
+
+    for idx, image in enumerate(images):
+        if c == "Red":
+            # Define the RGB values to search for with a threshold
+            if idx == 0:
+                target_color = (255, 81, 95)
+            else:
+                target_color = (30, 255, 197)
+        else:
+            # Define the RGB values to search for with a threshold
+            if idx == 0:
+                target_color = (30, 255, 197)
+            else:
+                target_color = (255, 81, 95)
+
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        threshold = 30  # Adjust this based on your tolerance for color variation
+
+        # Create a mask for pixels with RGB values within the threshold range
+        mask = np.all(np.abs(image_rgb - target_color) <= threshold, axis=-1)
+
+        # Perform closing operation on the mask
+        kernel = np.ones((5, 5), np.uint8)
+        mask_closed = cv2.morphologyEx(mask.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
+
+        # Find contours in the closed mask
+        contours, _ = cv2.findContours(mask_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Sort contours by y value
+        contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[1])
+
+        # Filter contours based on the remainder condition and minimum area
+        filtered_contours = []
+        health = []
+        for contour in contours:
+            x, y, w, h = cv2.boundingRect(contour)
+            area = cv2.contourArea(contour)
+            if (y % 105) >= 80 and (y % 105) <= 85 and area >= 10:
+                filtered_contours.append(contour)
+                health.append(w)
+
+        # Count the number of filtered contours (players)
+        num_players[idx] = len(filtered_contours)
+        if (len(health) < 5):
+            health.extend([0] * (5 - len(health)))
+        players_health[idx] = health
+
+    return num_players, players_health
+
+counter = 0
+
+def count_shapes(img):
+    global counter
+    print(f"Processing image {counter}/{total_images}")
+    rows, cols, _ = img.shape
+
+    top_left_y_left = int(rows * 0.486)
+    bottom_right_y_left = int(rows * 1.019)
+    top_left_x_left = int(cols * 0)
+    bottom_right_x_left = int(cols * 0.182)
+
+    top_left_y_right = int(rows * 0.486)
+    bottom_right_y_right = int(rows * 1.019)
+    top_left_x_right = int(cols * 0.818)
+    bottom_right_x_right = cols
+
+    left_region = img[top_left_y_left:bottom_right_y_left, top_left_x_left:bottom_right_x_left]
+    right_region = img[top_left_y_right:bottom_right_y_right, top_left_x_right:bottom_right_x_right]
+
+    images = [left_region, right_region]
+
+    num_ability_points = []
+    num_ults = []
+    num_ult_points = []
 
     for idx, image in enumerate(images):
         target_color = (255, 255, 255)  # Adjust if necessary
@@ -182,6 +190,7 @@ def count_shapes(img):
         ult_contours, ult_mask = process_image(image, target_color)
         ability_contours, ability_mask = process_image(image, target_color)
 
+        # Define area ranges for ult points and ability points
         min_area_ult_points = int(cols * rows * 0.0000014)
         max_area_ult_points = int(cols * rows * 0.0000072)
         min_area_ult = int(cols * rows * 0.00048)
@@ -198,27 +207,66 @@ def count_shapes(img):
         ult_points = filter_points(ult_points, direction, "Ult", cols, rows)
         ability_points = filter_points(ability_points, direction, "Ability", cols, rows)
 
-        num_ult_points[idx] = len(ult_points)
-        num_ability_points[idx] = len(ability_points)
-        num_ults[idx] = len(ults)
-        num_alive_players, players_health = count_players(img, direction)
+        num_ult_points.append(len(ult_points))
+        num_ability_points.append(len(ability_points))
+        num_ults.append(len(ults))
+        num_alive_players, players_health = count_players(img)
 
-        # Fill in players health to 5
-        if (len(players_health[idx]) < 5):
-            num_dead_players = 5 - len(players_health[idx])
-            for i in range(num_dead_players):
-                players_health[idx].append(0)
-        if (len(players_health[idx]) > 5): # Get first five values if more than 5 health values detected
-            players_health[idx] = players_health[idx][:5]
+        player_health_1 = []
+        player_health_2 = []
+        player_health_3 = []
+        player_health_4 = []
+        player_health_5 = []
 
-        player_health_1[idx], player_health_2[idx], player_health_3[idx], player_health_4[idx], player_health_5[idx] = players_health[idx]
-        
+        for health in players_health:
+            player_health_1.append(health[0])
+            player_health_2.append(health[1])
+            player_health_3.append(health[2])
+            player_health_4.append(health[3])
+            player_health_5.append(health[4])
+
+    counter += 1
 
     return num_alive_players, num_ability_points, num_ult_points, num_ults, player_health_1, player_health_2, player_health_3, player_health_4, player_health_5 
 
+# Function to process the image and return contours of the target color
+def count_spike(img):
+    rows, cols, _ = img.shape
+
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    spike = img [int(rows*0.0102):int(rows*0.0602), int(cols*0.469):int(cols*0.523)]
+
+    # Check if spike has the target color within a range
+    lower_range = np.array([245, 73, 98])
+    upper_range = np.array([265, 93, 118])
+
+
+    # Create a mask based on the lower and upper color ranges
+    mask = cv2.inRange(spike, lower_range, upper_range)
+
+    # Find contours in the mask
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Draw contours on the image
+    cv2.drawContours(spike, contours, -1, (0, 255, 0), 2)
+
+    if len(contours) > 0:
+        print("Spike detected!")
+        return True
+    else:
+        print("No spike detected.")
+        return False
+
+
+total_images = 0
+spike_countdown = 0
+
 def process_labels(input_file, output_file):
+    global total_images
     i = 0
     def process_image_row(row):
+        global spike_countdown
         image_path, green_win = row
         image_path = image_path.replace("\\", "/")
         img = cv2.imread(image_path)
@@ -229,8 +277,6 @@ def process_labels(input_file, output_file):
         left_team = color(img)
         if left_team == "Green":
             num_alive_players, num_ability_points, num_ult_points, num_ults, player_health_1, player_health_2, player_health_3, player_health_4, player_health_5 = count_shapes(img)
-            print("Type of player_health_1:", type(player_health_2))
-            print("Value of player_health_1:", player_health_2)
             green_players_alive = num_alive_players[0]
             green_ability_count = num_ability_points[0]
             green_ult_points = num_ult_points[0]
@@ -271,10 +317,20 @@ def process_labels(input_file, output_file):
             red_health_3 = player_health_3[0]
             red_health_4 = player_health_4[0]
             red_health_5 = player_health_5[0]
+        
+        spike_planted = count_spike(img)
+        if spike_planted:
+            print(f"Spike planted in {image_path}")
+            spike_countdown += 0.5
+            print("COUNTDWN: ", spike_countdown)
+            if (spike_countdown == 45):
+                print(f"Spike exploded! in {image_path}")
+        else:
+            spike_countdown = 0
 
         return [
             image_path, green_players_alive, green_ability_count, green_health_1, green_health_2, green_health_3, green_health_4, green_health_5, green_ults,
-            red_players_alive, red_ability_count, red_health_1, red_health_2, red_health_3, red_health_4, red_health_5, red_ults, green_win
+            red_players_alive, red_ability_count, red_health_1, red_health_2, red_health_3, red_health_4, red_health_5, red_ults, spike_countdown, green_win
         ]
 
     with open(input_file, 'r') as f:
@@ -297,7 +353,7 @@ def process_labels(input_file, output_file):
         writer = csv.writer(fout)
         writer.writerow([
             'image path', 'green_players_alive', 'green_ability_count', 'green_health_1', 'green_health_2', 'green_health_3', 'green_health_4', 'green_health_5', 'green_ults',
-            'red_players_alive', 'red_ability_count', 'red_health_1', 'red_health_2', 'red_health_3', 'red_health_4', 'red_health_5', 'red_ults', 'green_win'
+            'red_players_alive', 'red_ability_count', 'red_health_1', 'red_health_2', 'red_health_3', 'red_health_4', 'red_health_5', 'red_ults', 'spike_countdown', 'green_win',
         ])
         for i, result in enumerate(results):
             if (result!=None):
@@ -305,4 +361,4 @@ def process_labels(input_file, output_file):
                 print(f"Processed {i+1}/{total_images}")
 
 # Example usage:
-process_labels('output/screenshots/labels.csv', 'data5.csv')
+process_labels('output/screenshots/labels.csv', 'data8.csv')

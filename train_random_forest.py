@@ -5,7 +5,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix, classification_rep
 import joblib
 
 # Load the data
-data = pd.read_csv('data3.csv')
+data = pd.read_csv('data8.csv')
 
 # Split data into features and target variable
 X = data.drop(columns=['image path', 'green_win'])
