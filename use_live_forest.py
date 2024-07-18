@@ -1,3 +1,5 @@
+from datetime import datetime
+from io import BytesIO
 import pandas as pd
 import joblib
 import cv2
@@ -5,81 +7,90 @@ import numpy as np
 import cv2
 import numpy as np
 import time
-import threading
 from tkinter import Tk, simpledialog
+from PIL import Image
 import pyautogui
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from collections import deque
 import pygetwindow as gw
+import threading
 
 
 ########## CAPTURING WINDOW ###########
 selected_window = None
 screenshot_interval = 0.2  # Interval in seconds
 win_rate_history = deque(maxlen=60)  # Store last 60 seconds of win rates
+extracted_features_history = []  # Global list to store extracted features
 
 def capture_and_preprocess(selected_window):
     screenshot = pyautogui.screenshot(region=(selected_window.left, selected_window.top, selected_window.width, selected_window.height))
-    frame = np.array(screenshot)
-    # Display processed image using OpenCV
-    cv2.imshow('Processed Minimap', frame)
-    cv2.waitKey(1)  # Required for imshow to work properly
+    
+    # Convert the screenshot to an in-memory file-like object
+    buffer = BytesIO()
+    screenshot.save(buffer, format="PNG")
+    buffer.seek(0)
+
+    # Load the image from the in-memory file-like object
+    pil_image = Image.open(buffer)
+    frame = np.array(pil_image)
+
+    # Convert RGB to BGR
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+    # Process the frame
     features = extract_features(frame)
+
+    # Add a delay to avoid rapid looping (adjust as needed)
+    time.sleep(0.5)
+
     return features
 
-plt.ion()
-win_rate_history = deque(maxlen=60)  # Store last 60 seconds of win rates
-lock = threading.Lock()  # Lock for thread-safe access to win_rate_history
-extracted_features_history = []  # Global list to store extracted features
-
 def update_live_plot():
-    global win_rate_history, extracted_features_history
-    
-    fig, ax1 = plt.subplots()
+    global win_rate_history
+
+    plt.ion()
+    fig, ax1 = plt.subplots(figsize=(10, 4))  # Create a figure for the win rate plot
+
+    # Win Rate Plot
     green_line, = ax1.plot([], [], 'g-', marker='o', markersize=5, label='Win Rate')  # Green line with markers
-    red_line, = ax1.plot([], [], 'r-', marker='o', markersize=5, label='Complement Win Rate')  # Red line with markers
     ax1.set_xlim(0, 60)
     ax1.set_ylim(-0.1, 1.1)  # Adjusted to show binary values
     ax1.set_xlabel('Time (seconds)')
     ax1.set_ylabel('Win Rate')
-    plt.title('Live Win Rate')
-    plt.legend()
-
-    ax2 = ax1.twinx()
-    ax2.set_ylim(-0.1, 1.1)  # Adjusted to show binary values
-    ax2.set_ylabel('Extracted Feature')  # Label for extracted feature
+    ax1.set_title('Live Win Rate')
+    ax1.legend()
 
     while True:
-        with lock:
-            win_rates = list(win_rate_history)
-            if extracted_features_history:
-                last_features = extracted_features_history[-1]  # Get the last extracted features
-                extracted_feature_value = last_features['green_players_alive']  # Example: Display green players alive
-            else:
-                extracted_feature_value = 0  # Default value if no features are available
-        
-        complement_win_rates = [1 if rate == 0 else 0 for rate in win_rates]  # Convert to binary
+        win_rates = list(win_rate_history)
         x_data = list(range(len(win_rates)))
 
         green_line.set_data(x_data, win_rates)
-        red_line.set_data(x_data, complement_win_rates)
-        
-        # Update extracted feature on the plot
-        if extracted_features_history:
-            ax2.clear()  # Clear previous content
-            ax2.plot(x_data[-1], extracted_feature_value, 'bo')  # Plot the extracted feature point
-        
+
         ax1.relim()
         ax1.autoscale_view()
-        ax2.relim()
-        ax2.autoscale_view()
-        
+
         plt.draw()
         plt.pause(0.2)  # Update plot every 0.2 seconds
 
-    plt.ioff()  # Turn off interactive mode after all plot setup is complete
+def update_features_table():
+    global extracted_features_history
 
+    plt.ion()
+    fig, ax2 = plt.subplots(figsize=(10, 4))  # Create a figure for the features table
+
+    while True:
+        if extracted_features_history:
+            latest_features = extracted_features_history[-1]
+            table_data = latest_features.reset_index(drop=True)  # Reset index for displaying in the table
+            ax2.clear()
+            ax2.axis('off')
+            table = ax2.table(cellText=table_data.values, colLabels=table_data.columns, loc='center')
+            table.scale(1, 2)  # Scale the table to have 2 lines
+            table.auto_set_font_size(False)
+            table.set_fontsize(12)
+            plt.draw()
+            plt.pause(0.2)  # Update table every 0.2 seconds
 
 def select_window():
     global selected_window
@@ -99,7 +110,6 @@ def select_window():
         else:
             print("Window not found.")
     root.destroy()
-
 
 # Load the trained model
 model = joblib.load('best_rf_model.pkl')
@@ -167,6 +177,7 @@ def filter_points(points, part, type, cols, rows):
 def count_players(img):
     rows, cols, _ = img.shape
 
+    # Define the regions of interest
     top_left_y_left = int(rows * 0.486)
     bottom_right_y_left = int(rows * 1.019)
     top_left_x_left = int(cols * 0)
@@ -185,7 +196,7 @@ def count_players(img):
     c = color(img)
 
     num_players = [0, 0]
-    players_health = [0, 0]
+    players_health = [[], []]
 
     for idx, image in enumerate(images):
         if c == "Red":
@@ -203,7 +214,7 @@ def count_players(img):
 
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        threshold = 30  # Adjust this based on your tolerance for color variation
+        threshold = 50  # Adjust this based on your tolerance for color variation
 
         # Create a mask for pixels with RGB values within the threshold range
         mask = np.all(np.abs(image_rgb - target_color) <= threshold, axis=-1)
@@ -224,19 +235,30 @@ def count_players(img):
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
             area = cv2.contourArea(contour)
-            if (y % 105) >= 80 and (y % 105) <= 85 and area >= 10:
+            if area >= 10:
                 filtered_contours.append(contour)
                 health.append(w)
 
+        # Debugging print statements
+        print(f"Image region {idx}:")
+        print(f"Target color: {target_color}")
+        print(f"Number of contours found: {len(contours)}")
+        print(f"Location of contours {[(cv2.boundingRect(c)[1]) for c in contours]}")
+        print(f"Number of filtered contours: {len(filtered_contours)}")
+        print(f"Health values: {health}")
+
         # Count the number of filtered contours (players)
         num_players[idx] = len(filtered_contours)
-        if (len(health) < 5):
+        if len(health) < 5:
             health.extend([0] * (5 - len(health)))
         players_health[idx] = health
 
     return num_players, players_health
 
+spike_countdown = 0
+
 def count_shapes(img):
+    global spike_countdown
     rows, cols, _ = img.shape
 
     top_left_y_left = int(rows * 0.486)
@@ -284,30 +306,70 @@ def count_shapes(img):
         num_ult_points.append(len(ult_points))
         num_ability_points.append(len(ability_points))
         num_ults.append(len(ults))
-        num_alive_players, players_health = count_players(img)
 
-        player_health_1 = []
-        player_health_2 = []
-        player_health_3 = []
-        player_health_4 = []
-        player_health_5 = []
+    num_alive_players, players_health = count_players(img)
 
-        for health in players_health:
-            player_health_1.append(health[0])
-            player_health_2.append(health[1])
-            player_health_3.append(health[2])
-            player_health_4.append(health[3])
-            player_health_5.append(health[4])
+    player_health_1 = []
+    player_health_2 = []
+    player_health_3 = []
+    player_health_4 = []
+    player_health_5 = []
+
+    for health in players_health:
+        player_health_1.append(health[0])
+        player_health_2.append(health[1])
+        player_health_3.append(health[2])
+        player_health_4.append(health[3])
+        player_health_5.append(health[4])
+    
+    spike_planted = count_spike(img)
+    if spike_planted:
+        print("Spike planted")
+        spike_countdown += 0.5
+        print("COUNTDWN: ", spike_countdown)
+        if (spike_countdown == 45):
+            print("Spike exploded! in")
+    else:
+        spike_countdown = 0
 
 
+    return num_alive_players, num_ability_points, num_ult_points, num_ults, player_health_1, player_health_2, player_health_3, player_health_4, player_health_5, spike_countdown 
 
-    return num_alive_players, num_ability_points, num_ult_points, num_ults, player_health_1, player_health_2, player_health_3, player_health_4, player_health_5 
+def count_spike(img):
+    rows, cols, _ = img.shape
+
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    spike = img [int(rows*0.0102):int(rows*0.0602), int(cols*0.469):int(cols*0.523)]
+
+    # Check if spike has the target color within a range
+    lower_range = np.array([245, 73, 98])
+    upper_range = np.array([265, 93, 118])
+
+
+    # Create a mask based on the lower and upper color ranges
+    mask = cv2.inRange(spike, lower_range, upper_range)
+
+    # Find contours in the mask
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Draw contours on the image
+    cv2.drawContours(spike, contours, -1, (0, 255, 0), 2)
+
+    if len(contours) > 0:
+        print("Spike detected!")
+        return True
+    else:
+        print("No spike detected.")
+        return False
+
+
 
 def extract_features(img):
     rows, cols, _ = img.shape
     print(f"Extracting features from image of size: {rows}x{cols}")
 
-    num_alive_players, num_ability_points, num_ult_points, num_ults, player_health_1, player_health_2, player_health_3, player_health_4, player_health_5 = count_shapes(img)
+    num_alive_players, num_ability_points, num_ult_points, num_ults, player_health_1, player_health_2, player_health_3, player_health_4, player_health_5, spike_countdown = count_shapes(img)
 
     if color(img) == "Green":
         green = 0
@@ -315,8 +377,6 @@ def extract_features(img):
     else:
         green = 1
         red = 0
-
-
 
     features = {
         'green_players_alive' : num_alive_players[green],
@@ -335,7 +395,9 @@ def extract_features(img):
         'red_health_3' : player_health_3[red],
         'red_health_4' : player_health_4[red],
         'red_health_5' : player_health_5[red],
-        'red_ults' : num_ults[red]
+        'red_ults' : num_ults[red],
+
+        'spike_countdown': spike_countdown
 
     }
 
@@ -354,14 +416,18 @@ def predict(df):
 
 def main():
     global selected_window, win_rate_history
-    
+
     # Select the window to capture
     select_window()
-    
-    # Initialize live plot thread
-    live_plot_thread = threading.Thread(target=update_live_plot)
-    live_plot_thread.start()
-    
+
+    # Start live plot update in a separate thread
+    update_live_plot_thread = threading.Thread(target=update_live_plot)
+    update_live_plot_thread.start()
+
+    # Start features table update in a separate thread
+    update_features_table_thread = threading.Thread(target=update_features_table)
+    update_features_table_thread.start()
+
     # Main loop to capture and predict
     while True:
         if selected_window:
@@ -371,6 +437,7 @@ def main():
                 print(features)
                 prediction = predict(features)
                 win_rate_history.append(prediction)
+                extracted_features_history.append(features)  # Append features to history
                 elapsed_time = time.time() - start_time
                 time.sleep(max(0, screenshot_interval - elapsed_time))
             except Exception as e:
@@ -379,4 +446,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
