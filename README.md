@@ -1,31 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Valorant Match Analysis Tool</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 20px;
-        }
-        h1, h2, h3 {
-            margin-top: 30px;
-        }
-        h2 {
-            margin-top: 20px;
-        }
-        h3 {
-            margin-top: 10px;
-        }
-        code {
-            background-color: #f0f0f0;
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-    </style>
-</head>
+
 <body>
 
 <h1>Valorant Match Analysis Tool</h1>
