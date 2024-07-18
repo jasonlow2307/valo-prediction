@@ -15,13 +15,19 @@ import matplotlib.pyplot as plt
 from collections import deque
 import pygetwindow as gw
 import threading
-
+from queue import Queue
 
 ########## CAPTURING WINDOW ###########
 selected_window = None
 screenshot_interval = 0.2  # Interval in seconds
 win_rate_history = deque(maxlen=60)  # Store last 60 seconds of win rates
 extracted_features_history = []  # Global list to store extracted features
+
+green_player_alive = []
+red_player_alive = []
+
+green_ability_count = []
+red_ability_count = []
 
 def capture_and_preprocess(selected_window):
     screenshot = pyautogui.screenshot(region=(selected_window.left, selected_window.top, selected_window.width, selected_window.height))
@@ -66,31 +72,14 @@ def update_live_plot():
         x_data = list(range(len(win_rates)))
 
         green_line.set_data(x_data, win_rates)
-
+        if len(green_player_alive) > 0 and len(win_rate_history) > 0 and len(green_ability_count) > 0 and len(red_ability_count) > 0:
+            ax1.set_title(f'Green {green_player_alive[-1]} Red {red_player_alive[-1]} Win Rate: {win_rate_history[-1]} G Ability: {green_ability_count[-1]} R Ability: {red_ability_count[-1]}')
         ax1.relim()
         ax1.autoscale_view()
 
         plt.draw()
         plt.pause(0.2)  # Update plot every 0.2 seconds
 
-def update_features_table():
-    global extracted_features_history
-
-    plt.ion()
-    fig, ax2 = plt.subplots(figsize=(10, 4))  # Create a figure for the features table
-
-    while True:
-        if extracted_features_history:
-            latest_features = extracted_features_history[-1]
-            table_data = latest_features.reset_index(drop=True)  # Reset index for displaying in the table
-            ax2.clear()
-            ax2.axis('off')
-            table = ax2.table(cellText=table_data.values, colLabels=table_data.columns, loc='center')
-            table.scale(1, 2)  # Scale the table to have 2 lines
-            table.auto_set_font_size(False)
-            table.set_fontsize(12)
-            plt.draw()
-            plt.pause(0.2)  # Update table every 0.2 seconds
 
 def select_window():
     global selected_window
@@ -110,6 +99,7 @@ def select_window():
         else:
             print("Window not found.")
     root.destroy()
+
 
 # Load the trained model
 model = joblib.load('best_rf_model.pkl')
@@ -400,6 +390,12 @@ def extract_features(img):
         'spike_countdown': spike_countdown
 
     }
+    extracted_features_history.append(features)
+    green_player_alive.append(num_alive_players[green])
+    red_player_alive.append(num_alive_players[red])
+
+    green_ability_count.append(num_ability_points[green])
+    red_ability_count.append(num_ability_points[red])
 
     df = pd.DataFrame([features])
     return df
@@ -415,7 +411,7 @@ def predict(df):
     return prediction[0]
 
 def main():
-    global selected_window, win_rate_history
+    global selected_window, win_rate_history, win_rate_queue, extracted_features_history
 
     # Select the window to capture
     select_window()
@@ -424,22 +420,23 @@ def main():
     update_live_plot_thread = threading.Thread(target=update_live_plot)
     update_live_plot_thread.start()
 
-    # Start features table update in a separate thread
-    update_features_table_thread = threading.Thread(target=update_features_table)
-    update_features_table_thread.start()
-
     # Main loop to capture and predict
     while True:
         if selected_window:
             try:
                 start_time = time.time()
                 features = capture_and_preprocess(selected_window)
-                print(features)
                 prediction = predict(features)
+                
+                # Add win rate to the win rate history for plotting
                 win_rate_history.append(prediction)
-                extracted_features_history.append(features)  # Append features to history
+                
+                # Log prediction for debugging or further analysis
+                print(f"Prediction: {prediction}")
+                
                 elapsed_time = time.time() - start_time
                 time.sleep(max(0, screenshot_interval - elapsed_time))
+                
             except Exception as e:
                 print(f"Error in main loop: {e}")
                 time.sleep(1)
