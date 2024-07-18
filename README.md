@@ -41,10 +41,9 @@
             <ul>
                 <li>If the trained model (<code>best_rf_model.pkl</code>) is not included, ensure you download or generate it according to your model training process.</li>
             </ul>
-        <li><strong>Run The Code:
+        <li><strong>Run The Script:
             <ul>
               <li><code>python3 run_live_forest.py</code></li>
-              <li>Select a window to capture</li>
             </ul>
         </li>
         </li>
@@ -54,8 +53,6 @@
 <section id="usage">
     <h2>🚀 Usage</h2>
     <ol>
-        <li><strong>Run the Application:</strong><br>
-            <code>python main.py</code></li>
         <li><strong>Select Valorant Window:</strong><br>
             <ul>
                 <li>A dialog will prompt you to select the Valorant game window from a list of currently open windows.</li>
