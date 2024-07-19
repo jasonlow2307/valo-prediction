@@ -8,13 +8,13 @@
 <nav>
     <ul>
         <li><a href="#overview">📝 Overview</a></li>
+        <li><a href="#training">💪 Training</a></li>
         <li><a href="#features">🔍 Features</a></li>
         <li><a href="#installation">🛠 Installation</a></li>
         <li><a href="#usage">🚀 Usage</a></li>
         <li><a href="#issues">🐛 Known Issues</a></li>
         <li><a href="#future">🔮 Future Enhancements</a></li>
         <li><a href="#contributing">🤝 Contributing</a></li>
-        <li><a href="#license">⚖️ License</a></li>
     </ul>
 </nav>
 
@@ -126,11 +126,6 @@
 <section id="contributing">
     <h2>🤝 Contributing</h2>
     <p>Contributions are welcome! If interested, please fork the repository and submit a pull request with your improvements. I can provide the dataset for training.</p>
-</section>
-
-<section id="license">
-    <h2>⚖️ License</h2>
-    <p>This project is licensed under the GNU License. See <code>LICENSE</code> for more details.</p>
 </section>
 
 </body>
