@@ -19,9 +19,9 @@
 </nav>
 
 <section id="overview">
-    
-![Banner](imgs/red_win1.png)
     <h2>📝 Overview</h2>
+    
+![Banner](imgs/red_win1.png)    
     <p>This tool captures screenshots of Valorant matches, analyzes them in real-time, and predicts match outcomes based on extracted features. It includes live visualizations of win rates and detailed feature tables for analysis.</p>
     <p>However, as the live processing is only consistent 90% of the time, this tool also offers an option to predict based on a screenshot instead of capturing screenshots and predicting live.</p>
 </section>
