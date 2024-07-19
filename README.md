@@ -3,7 +3,7 @@
 
 <h1>Valorant Match Analysis Tool</h1>
 
-![Banner](imgs/green_win1.png)
+![Banner](imgs/animation.gif)
 
 <nav>
     <ul>
