@@ -3,6 +3,8 @@
 
 <h1>Valorant Match Analysis Tool</h1>
 
+![Banner](imgs/green_win1.png)
+
 <nav>
     <ul>
         <li><a href="#overview">📝 Overview</a></li>
@@ -18,8 +20,26 @@
 
 <section id="overview">
     <h2>📝 Overview</h2>
+    
+![Banner](imgs/red_win1.png)    
     <p>This tool captures screenshots of Valorant matches, analyzes them in real-time, and predicts match outcomes based on extracted features. It includes live visualizations of win rates and detailed feature tables for analysis.</p>
+    <p>However, as the live processing is only consistent 90% of the time, this tool also offers an option to predict based on a screenshot instead of capturing screenshots and predicting live.</p>
 </section>
+
+<section id="training">
+    <h2>💪 Training</h2>
+    <p>This model is only trained on the following features extracted from the image</p>
+    <ul>
+        <li>Number of players alive</li>
+        <li>Health of each alive players</li>
+        <li>Number of ability points</li>
+        <li>Number of ults</li>
+        <li>Time since spike is planted (0 if spike is not planted)</li>
+    </ul>
+    <p>Through the training process an accuracy of 95% can be achieved</p>
+</section>
+
+![Banner](imgs/training_result2.png)
 
 <section id="features">
     <h2>🔍 Features</h2>
@@ -28,7 +48,6 @@
         <li><strong>Feature Extraction:</strong> Extracts various game features such as number of players alive, ability counts, health stats, and presence of game elements like spikes.</li>
         <li><strong>Machine Learning Prediction:</strong> Uses a trained machine learning model (Random Forest) to predict match outcomes based on extracted features.</li>
         <li><strong>Live Visualization:</strong> Displays live updates of win rates over time and detailed feature tables using Matplotlib.</li>
-        <li><strong>User Interface:</strong> Simple GUI for selecting the Valorant game window to analyze.</li>
     </ul>
 </section>
 
@@ -77,6 +96,7 @@
     <h2>🐛 Known Issues</h2>
     <ul>
         <li>Occasional delays or inaccuracies may occur in feature extraction depending on game window visibility and performance.</li>
+        <li>Slight inconsistencies in extraction of features when taking screenshots and predicting lvie</li>
     </ul>
 </section>
 
@@ -84,8 +104,8 @@
     <h2>🔮 Future Enhancements</h2>
     <ul>
         <li>Gather more data to train the model (currently trained with 7000 images)</li>
-        <li>Integration with cloud services for remote monitoring and analysis.</li>
-        <li>Support for multiple game windows or simultaneous analysis.</li>
+        <li>Add in additional features (e.g. agents played, guns used, economy)</li>
+        <li>Improve feature extraction to increase reliability</li>
         <li>Enhance GUI for better user interaction and feedback.</li>
     </ul>
 </section>
