@@ -2,7 +2,7 @@
 <body>
 
 <h1>Valorant Match Analysis Tool</h1>
-
+![Banner](imgs/green_win1.png)
 <nav>
     <ul>
         <li><a href="#overview">📝 Overview</a></li>
