@@ -55,41 +55,54 @@
     <h2>🛠 Installation</h2>
     <ol>
         <li><strong>Clone the Repository:</strong><br>
-        <li><strong>Install Dependencies:</strong><br>
-        <li><strong>Download Model (if required):</strong><br>
-            <ul>
-                <li>If the trained model (<code>best_rf_model.pkl</code>) is not included, ensure you download or generate it according to your model training process.</li>
-            </ul>
-        <li><strong>Run The Script:
-            <ul>
-              <li><code>python3 run_live_forest.py</code></li>
-            </ul>
-        </li>
+        <li>
+            <strong>Install the dependencies</strong>
+            <code>pip install -r requirements.txt</code>
         </li>
     </ol>
 </section>
 
 <section id="usage">
     <h2>🚀 Usage</h2>
-    <ol>
-        <li><strong>Select Valorant Window:</strong><br>
+    <ul>
+        <li>
+            <h3>Using Live Version</h3>
             <ul>
-                <li>A dialog will prompt you to select the Valorant game window from a list of currently open windows.</li>
+                <li>
+                    <strong>Run the script</strong>
+                    <code>python3 use_live_forest.py</code>
+                </li>
+                <li><strong>Select Valorant Window:</strong><br>
+                    <ul>
+                        <li>A dialog will prompt you to select the Valorant game window from a list of currently open windows.</li>
+                    </ul>
+                </li>
+                <li><strong>Monitor Live Updates:</strong><br>
+                    <ul>
+                        <li>The application will start capturing and analyzing screenshots in real-time.</li>
+                        <li>Win rates will be plotted dynamically, and feature tables will be updated continuously.</li>
+                    </ul>
+                </li>
+                <li><strong>Interpret Results:</strong><br>
+                    <ul>
+                        <li>View the live plot to monitor win rate trends.</li>
+                        <li>Check the feature tables to understand the extracted data from each screenshot.</li>
+                    </ul>
+                </li>
             </ul>
         </li>
-        <li><strong>Monitor Live Updates:</strong><br>
+        <li>
+            <h3>Using Single Image Version</h3>
             <ul>
-                <li>The application will start capturing and analyzing screenshots in real-time.</li>
-                <li>Win rates will be plotted dynamically, and feature tables will be updated continuously.</li>
-            </ul>
+                <li>
+                    <strong>Change the image path at the bottom of the script (use_random_forest.py)</strong>
+                </li>
+                <li>
+                    <strong>Run the script</strong>
+                    <code>python3 use_random_forest.py</code>
+                </li>
         </li>
-        <li><strong>Interpret Results:</strong><br>
-            <ul>
-                <li>View the live plot to monitor win rate trends.</li>
-                <li>Check the feature tables to understand the extracted data from each screenshot.</li>
-            </ul>
-        </li>
-    </ol>
+    </ul>
 </section>
 
 <section id="issues">
