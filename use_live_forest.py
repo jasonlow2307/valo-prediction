@@ -21,13 +21,18 @@ from queue import Queue
 selected_window = None
 screenshot_interval = 0.2  # Interval in seconds
 win_rate_history = deque(maxlen=60)  # Store last 60 seconds of win rates
-extracted_features_history = []  # Global list to store extracted features
 
+# Gobal lists for displaying on the live plot
 green_player_alive = []
 red_player_alive = []
 
 green_ability_count = []
 red_ability_count = []
+
+green_ult_count = []
+red_ult_count = []
+
+spike_countdown_list = []
 
 def capture_and_preprocess(selected_window):
     screenshot = pyautogui.screenshot(region=(selected_window.left, selected_window.top, selected_window.width, selected_window.height))
@@ -48,7 +53,7 @@ def capture_and_preprocess(selected_window):
     features = extract_features(frame)
 
     # Add a delay to avoid rapid looping (adjust as needed)
-    time.sleep(0.5)
+    time.sleep(0.1)
 
     return features
 
@@ -59,7 +64,8 @@ def update_live_plot():
     fig, ax1 = plt.subplots(figsize=(10, 4))  # Create a figure for the win rate plot
 
     # Win Rate Plot
-    green_line, = ax1.plot([], [], 'g-', marker='o', markersize=5, label='Win Rate')  # Green line with markers
+    green_line, = ax1.plot([], [], 'g-', marker='o', markersize=5, label='Green Win Rate')  # Green line with markers
+    red_line, = ax1.plot([], [], 'r-', marker='o', markersize=5, label='Red Win Rate')  # Red line with markers
     ax1.set_xlim(0, 60)
     ax1.set_ylim(-0.1, 1.1)  # Adjusted to show binary values
     ax1.set_xlabel('Time (seconds)')
@@ -69,16 +75,18 @@ def update_live_plot():
 
     while True:
         win_rates = list(win_rate_history)
+        complement_win_rates = [1 - rate for rate in win_rates]
         x_data = list(range(len(win_rates)))
 
         green_line.set_data(x_data, win_rates)
+        red_line.set_data(x_data, complement_win_rates)
         if len(green_player_alive) > 0 and len(win_rate_history) > 0 and len(green_ability_count) > 0 and len(red_ability_count) > 0:
-            ax1.set_title(f'Green {green_player_alive[-1]} Red {red_player_alive[-1]} Win Rate: {win_rate_history[-1]} G Ability: {green_ability_count[-1]} R Ability: {red_ability_count[-1]}')
+            ax1.set_title(f'Green {green_player_alive[-1]} Red {red_player_alive[-1]} G Ability: {green_ability_count[-1]} R Ability: {red_ability_count[-1]} G Ult: {green_ult_count[-1]} R Ult: {red_ult_count[-1]} Spike: {spike_countdown_list[-1]}')
         ax1.relim()
         ax1.autoscale_view()
 
         plt.draw()
-        plt.pause(0.2)  # Update plot every 0.2 seconds
+        plt.pause(0.1)  # Update plot every 0.2 seconds
 
 
 def select_window():
@@ -104,6 +112,7 @@ def select_window():
 # Load the trained model
 model = joblib.load('best_rf_model.pkl')
 
+# Function to dermine the color of left team
 def color(image):
     rows, cols, _ = image.shape
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -115,6 +124,7 @@ def color(image):
     distance_to_green = np.linalg.norm(color_value - green_color)
     return "Red" if distance_to_red < distance_to_green else "Green"
 
+# Function to process the image and extract contours matching target colour
 def process_image(image, target_color, threshold=50):
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     mask = np.all(np.abs(image_rgb - target_color) <= threshold, axis=-1).astype(np.uint8) * 255
@@ -124,6 +134,7 @@ def process_image(image, target_color, threshold=50):
     contours, _ = cv2.findContours(mask_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     return contours, mask_closed
 
+# Function to filter points based on their location and size
 def filter_points(points, part, type, cols, rows):
     valid_points = []
     points_sorted = sorted(points, key=lambda x: cv2.boundingRect(x)[0], reverse=(part == "Right"))
@@ -164,6 +175,7 @@ def filter_points(points, part, type, cols, rows):
                         continue
     return valid_points
 
+# Function to count the number of players on each side
 def count_players(img):
     rows, cols, _ = img.shape
 
@@ -247,6 +259,7 @@ def count_players(img):
 
 spike_countdown = 0
 
+# Function to count number of abilities and ults on each side
 def count_shapes(img):
     global spike_countdown
     rows, cols, _ = img.shape
@@ -325,6 +338,7 @@ def count_shapes(img):
 
     return num_alive_players, num_ability_points, num_ult_points, num_ults, player_health_1, player_health_2, player_health_3, player_health_4, player_health_5, spike_countdown 
 
+# Function to determine if spike is planted and return the countdown
 def count_spike(img):
     rows, cols, _ = img.shape
 
@@ -354,7 +368,7 @@ def count_spike(img):
         return False
 
 
-
+# Function to extract features from an image
 def extract_features(img):
     rows, cols, _ = img.shape
     print(f"Extracting features from image of size: {rows}x{cols}")
@@ -369,7 +383,7 @@ def extract_features(img):
         red = 0
 
     features = {
-        'green_players_alive' : num_alive_players[green],
+        'green_players_alive' : min(num_alive_players[green], 5),
         'green_ability_count' : num_ability_points[green],
         'green_health_1' : player_health_1[green],
         'green_health_2' : player_health_2[green],
@@ -378,7 +392,7 @@ def extract_features(img):
         'green_health_5' : player_health_5[green],
         'green_ults' : num_ults[green],
         
-        'red_players_alive' : num_alive_players[red],
+        'red_players_alive' : min(num_alive_players[red], 5),
         'red_ability_count' : num_ability_points[red],
         'red_health_1' : player_health_1[red],
         'red_health_2' : player_health_2[red],
@@ -390,12 +404,16 @@ def extract_features(img):
         'spike_countdown': spike_countdown
 
     }
-    extracted_features_history.append(features)
-    green_player_alive.append(num_alive_players[green])
-    red_player_alive.append(num_alive_players[red])
+    green_player_alive.append(min(num_alive_players[green], 5))
+    red_player_alive.append(min(num_alive_players[red], 5))
 
     green_ability_count.append(num_ability_points[green])
     red_ability_count.append(num_ability_points[red])
+
+    green_ult_count.append(num_ults[green])
+    red_ult_count.append(num_ults[red])
+
+    spike_countdown_list.append(spike_countdown)
 
     df = pd.DataFrame([features])
     return df
@@ -411,7 +429,7 @@ def predict(df):
     return prediction[0]
 
 def main():
-    global selected_window, win_rate_history, win_rate_queue, extracted_features_history
+    global selected_window, win_rate_history
 
     # Select the window to capture
     select_window()

@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
+# Function to determine the color of the left team 
 def color(image):
     rows, cols, _ = image.shape
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -38,6 +39,7 @@ def process_image(image, target_color, threshold=50):
     contours, _ = cv2.findContours(mask_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     return contours, mask_closed
 
+# Function to filter the points based on the remainder condition and minimum area
 def filter_points(points, part, type, cols, rows):
     if type == "Ability":
         points_sorted = sorted(points, key=lambda x: cv2.boundingRect(x)[0], reverse=(part == "Right"))
@@ -86,6 +88,7 @@ def filter_points(points, part, type, cols, rows):
                         continue
     return valid_points
 
+# Function to count the number of players on each team
 def count_players(img):
     rows, cols, _ = img.shape
 
@@ -160,6 +163,7 @@ def count_players(img):
 
 counter = 0
 
+# Function to count the number of abilities and ults on each side 
 def count_shapes(img):
     global counter
     print(f"Processing image {counter}/{total_images}")
@@ -229,7 +233,7 @@ def count_shapes(img):
 
     return num_alive_players, num_ability_points, num_ult_points, num_ults, player_health_1, player_health_2, player_health_3, player_health_4, player_health_5 
 
-# Function to process the image and return contours of the target color
+# Function to determine if spike is planted and return the countdown
 def count_spike(img):
     rows, cols, _ = img.shape
 
@@ -262,6 +266,7 @@ def count_spike(img):
 total_images = 0
 spike_countdown = 0
 
+# Main function to process image from labels.csv
 def process_labels(input_file, output_file):
     global total_images
     i = 0
@@ -343,9 +348,12 @@ def process_labels(input_file, output_file):
     print("Done Reading")
 
     print("Preparing to process", total_images, "images")
+    
+    results = []
+    for row in rows:
+        result = process_image_row(row)
+        results.append(result)
 
-    with ThreadPoolExecutor() as executor:
-        results = list(executor.map(process_image_row, rows))
 
     print("Done Preprocessing")
 

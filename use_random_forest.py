@@ -2,10 +2,12 @@ import pandas as pd
 import joblib
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Load the trained model
-model = joblib.load('best_rf_model.pkl')
+model, features = joblib.load('best_rf_model_with_features.pkl')
 
+# Determine the color of the left team
 def color(image):
     rows, cols, _ = image.shape
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -17,6 +19,7 @@ def color(image):
     distance_to_green = np.linalg.norm(color_value - green_color)
     return "Red" if distance_to_red < distance_to_green else "Green"
 
+# Function to process the image and return contours of the target color
 def process_image(image, target_color, threshold=50):
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     mask = np.all(np.abs(image_rgb - target_color) <= threshold, axis=-1).astype(np.uint8) * 255
@@ -26,6 +29,7 @@ def process_image(image, target_color, threshold=50):
     contours, _ = cv2.findContours(mask_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     return contours, mask_closed
 
+# Function to filter points based on their position and size
 def filter_points(points, part, type, cols, rows):
     valid_points = []
     points_sorted = sorted(points, key=lambda x: cv2.boundingRect(x)[0], reverse=(part == "Right"))
@@ -66,6 +70,7 @@ def filter_points(points, part, type, cols, rows):
                         continue
     return valid_points
 
+# Function to count the number of players on each side
 def count_players(img):
     rows, cols, _ = img.shape
 
@@ -138,6 +143,7 @@ def count_players(img):
 
     return num_players, players_health
 
+# Function to determine number of ability points and ults
 def count_shapes(img):
     rows, cols, _ = img.shape
 
@@ -214,8 +220,40 @@ def count_shapes(img):
 
     return num_alive_players, num_ability_points, num_ult_points, num_ults, player_health_1, player_health_2, player_health_3, player_health_4, player_health_5 
 
+# Function to determine if spike is planted and return the countdown
+def count_spike(img):
+    rows, cols, _ = img.shape
 
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    spike = img [int(rows*0.0102):int(rows*0.0602), int(cols*0.469):int(cols*0.523)]
+
+    # Check if spike has the target color within a range
+    lower_range = np.array([245, 73, 98])
+    upper_range = np.array([265, 93, 118])
+
+
+    # Create a mask based on the lower and upper color ranges
+    mask = cv2.inRange(spike, lower_range, upper_range)
+
+    # Find contours in the mask
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Draw contours on the image
+    cv2.drawContours(spike, contours, -1, (0, 255, 0), 2)
+
+    if len(contours) > 0:
+        print("Spike detected!")
+        return True
+    else:
+        print("No spike detected.")
+        return False
+
+spike_countdown = 0
+
+# Function to extract features from the image using functions above
 def extract_features(image_path):
+    global spike_countdown
     img = cv2.imread(image_path)
     if img is None:
         raise ValueError(f"Image at path {image_path} could not be loaded.")
@@ -234,8 +272,19 @@ def extract_features(image_path):
 
     print(num_ults[green])
 
+    spike_planted = count_spike(img)
+    if spike_planted:
+        print(f"Spike planted in {image_path}")
+        spike_countdown += 0.5
+        print("COUNTDWN: ", spike_countdown)
+        if (spike_countdown == 45):
+            print(f"Spike exploded! in {image_path}")
+    else:
+        spike_countdown = 0
+
+
     features = {
-        'green_players alive' : num_alive_players[green],
+        'green_players_alive' : num_alive_players[green],
         'green_ability_count' : num_ability_points[green],
         'green_health_1' : player_health_1[green],
         'green_health_2' : player_health_2[green],
@@ -251,7 +300,9 @@ def extract_features(image_path):
         'red_health_3' : player_health_3[red],
         'red_health_4' : player_health_4[red],
         'red_health_5' : player_health_5[red],
-        'red_ults' : num_ults[red]
+        'red_ults' : num_ults[red],
+
+        'spike_countdown' : spike_countdown
 
     }
 
@@ -273,10 +324,22 @@ def main(image_path):
     try:
         df = extract_features(image_path)
         predicted_value = predict(df)
+        
+        img = cv2.imread(image_path)
+        plt.figure()
+        plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), cmap='gray')
+        if predicted_value == 0:
+            plt.title("Predicted value: Red Win")
+        else:
+            plt.title("Predicted value: Green Win")
+        plt.show()
+
+
         print(f"Predicted value for image: {predicted_value}")
     except Exception as e:
         print(f"Error occurred: {e}")
 
 if __name__ == "__main__":
-    image_path = "output/screenshots/1718788718.4776547.jpg"
+    # Select your image to predict here
+    image_path = 'images/004.png' 
     main(image_path)
