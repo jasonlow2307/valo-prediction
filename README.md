@@ -67,7 +67,7 @@
     <ul>
         <li>
             <h3>Using Live Version</h3>
-            <ol>
+            <ul>
                 <li>
                     <strong>Run the script</strong>
                     <code>python3 use_live_forest.py</code>
@@ -89,7 +89,7 @@
                         <li>Check the feature tables to understand the extracted data from each screenshot.</li>
                     </ul>
                 </li>
-            </ol>
+            </ul>
         </li>
         <li>
             <h3>Using Single Image Version</h3>
